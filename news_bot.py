@@ -20,6 +20,13 @@ GIORNI_IT = ["Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato", "
 MESI_IT = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
            "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
+# Query per catturare rilasci di nuovi modelli AI/LLM
+AI_MODELS_QUERY = (
+    '("GPT" OR "Claude" OR "Gemini" OR "Llama" OR "Qwen" OR "Mistral" OR '
+    '"Grok" OR "DeepSeek" OR "Phi" OR "Falcon" OR "Copilot" OR "Perplexity") '
+    'AND ("release" OR "launch" OR "new model" OR "unveiled" OR "announced" OR "update")'
+)
+
 
 def is_scheduled_time() -> bool:
     now = datetime.now(ITALY_TZ)
@@ -30,7 +37,7 @@ def is_scheduled_time() -> bool:
     return False
 
 
-def get_news(section: str = None, query: str = None, page_size: int = 5) -> list[dict]:
+def get_news(section: str = None, query: str = None, page_size: int = 4) -> list[dict]:
     params = {
         "api-key": GUARDIAN_API_KEY,
         "page-size": page_size,
@@ -56,11 +63,14 @@ def escape_md(text: str) -> str:
 def format_section(emoji: str, titolo: str, articles: list[dict]) -> str:
     numeri = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
     lines = [f"{emoji} *{titolo}*", ""]
-    for i, article in enumerate(articles):
-        title = article["webTitle"]
-        url = article["webUrl"]
-        num = numeri[i] if i < len(numeri) else f"{i+1}\\."
-        lines.append(f"{num} [{escape_md(title)}]({url})")
+    if not articles:
+        lines.append("_Nessuna novita' al momento_")
+    else:
+        for i, article in enumerate(articles):
+            title = article["webTitle"]
+            url = article["webUrl"]
+            num = numeri[i] if i < len(numeri) else f"{i+1}\\."
+            lines.append(f"{num} [{escape_md(title)}]({url})")
     lines.append("")
     return "\n".join(lines)
 
@@ -71,9 +81,10 @@ def build_message() -> str:
     data_str = f"{giorno} {now.day} {MESI_IT[now.month]} {now.year}"
     ora_str = now.strftime("%H:%M")
 
-    world = get_news(section="world", page_size=5)
-    tech = get_news(section="technology", query="AI OR artificial intelligence OR tech", page_size=5)
-    seriea = get_news(query='"Serie A"', page_size=5)
+    world  = get_news(section="world", page_size=4)
+    tech   = get_news(section="technology", query="AI OR artificial intelligence OR tech", page_size=4)
+    models = get_news(section="technology", query=AI_MODELS_QUERY, page_size=4)
+    seriea = get_news(query='"Serie A"', page_size=4)
 
     sep = "〰️〰️〰️〰️〰️〰️〰️〰️〰️\n\n"
 
@@ -83,6 +94,8 @@ def build_message() -> str:
     msg += format_section("🌍", "NOTIZIE DAL MONDO", world)
     msg += sep
     msg += format_section("🤖", "AI & TECNOLOGIA", tech)
+    msg += sep
+    msg += format_section("🧠", "NUOVI MODELLI AI / LLM", models)
     msg += sep
     msg += format_section("⚽", "SERIE A", seriea)
     msg += "〰️〰️〰️〰️〰️〰️〰️〰️〰️\n"
