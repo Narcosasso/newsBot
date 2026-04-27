@@ -36,29 +36,34 @@ def is_scheduled_time() -> bool:
     return False
 
 
-def get_top_headlines(topic: str, max_results: int = 4) -> list[dict]:
-    params = {
-        "token": GNEWS_API_KEY,
-        "topic": topic,
-        "lang": "it",
-        "max": max_results,
-    }
-    resp = requests.get(GNEWS_TOP, params=params, timeout=15)
+def _fetch(url: str, params: dict) -> list[dict]:
+    import time
+    time.sleep(1)  # evita rate limiting tra chiamate consecutive
+    resp = requests.get(url, params=params, timeout=15)
+    if resp.status_code == 429:
+        print(f"Rate limit GNews raggiunto ({url}), sezione saltata.")
+        return []
     resp.raise_for_status()
     return resp.json().get("articles", [])
 
 
+def get_top_headlines(topic: str, max_results: int = 4) -> list[dict]:
+    return _fetch(GNEWS_TOP, {
+        "token": GNEWS_API_KEY,
+        "topic": topic,
+        "lang": "it",
+        "max": max_results,
+    })
+
+
 def get_search_news(query: str, max_results: int = 4) -> list[dict]:
-    params = {
+    return _fetch(GNEWS_SEARCH, {
         "token": GNEWS_API_KEY,
         "q": query,
         "lang": "it",
         "max": max_results,
         "sortby": "publishedAt",
-    }
-    resp = requests.get(GNEWS_SEARCH, params=params, timeout=15)
-    resp.raise_for_status()
-    return resp.json().get("articles", [])
+    })
 
 
 def escape_md(text: str) -> str:
