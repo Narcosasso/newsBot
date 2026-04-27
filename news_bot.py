@@ -7,9 +7,10 @@ from datetime import datetime
 # --- Config ---
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
-GUARDIAN_API_KEY = os.environ["GUARDIAN_API_KEY"]
+GNEWS_API_KEY = os.environ["GNEWS_API_KEY"]
 
-GUARDIAN_URL = "https://content.guardianapis.com/search"
+GNEWS_TOP = "https://gnews.io/api/v4/top-headlines"
+GNEWS_SEARCH = "https://gnews.io/api/v4/search"
 TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 ITALY_TZ = pytz.timezone("Europe/Rome")
@@ -20,11 +21,9 @@ GIORNI_IT = ["Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato", "
 MESI_IT = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
            "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-# Query per catturare rilasci di nuovi modelli AI/LLM
 AI_MODELS_QUERY = (
-    '("GPT" OR "Claude" OR "Gemini" OR "Llama" OR "Qwen" OR "Mistral" OR '
-    '"Grok" OR "DeepSeek" OR "Phi" OR "Falcon" OR "Copilot" OR "Perplexity") '
-    'AND ("release" OR "launch" OR "new model" OR "unveiled" OR "announced" OR "update")'
+    "GPT OR Claude OR Gemini OR Llama OR Qwen OR Mistral OR "
+    "Grok OR DeepSeek OR Phi OR Copilot OR \"nuovo modello\" OR \"modello AI\""
 )
 
 
@@ -37,22 +36,29 @@ def is_scheduled_time() -> bool:
     return False
 
 
-def get_news(section: str = None, query: str = None, page_size: int = 4) -> list[dict]:
+def get_top_headlines(topic: str, max_results: int = 4) -> list[dict]:
     params = {
-        "api-key": GUARDIAN_API_KEY,
-        "page-size": page_size,
-        "order-by": "newest",
-        "show-fields": "trailText",
-        "lang": "en",
+        "token": GNEWS_API_KEY,
+        "topic": topic,
+        "lang": "it",
+        "max": max_results,
     }
-    if section:
-        params["section"] = section
-    if query:
-        params["q"] = query
-
-    resp = requests.get(GUARDIAN_URL, params=params, timeout=15)
+    resp = requests.get(GNEWS_TOP, params=params, timeout=15)
     resp.raise_for_status()
-    return resp.json()["response"]["results"]
+    return resp.json().get("articles", [])
+
+
+def get_search_news(query: str, max_results: int = 4) -> list[dict]:
+    params = {
+        "token": GNEWS_API_KEY,
+        "q": query,
+        "lang": "it",
+        "max": max_results,
+        "sortby": "publishedAt",
+    }
+    resp = requests.get(GNEWS_SEARCH, params=params, timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("articles", [])
 
 
 def escape_md(text: str) -> str:
@@ -67,10 +73,12 @@ def format_section(emoji: str, titolo: str, articles: list[dict]) -> str:
         lines.append("_Nessuna novita' al momento_")
     else:
         for i, article in enumerate(articles):
-            title = article["webTitle"]
-            url = article["webUrl"]
+            title = article["title"]
+            url = article["url"]
+            source = article.get("source", {}).get("name", "")
+            source_str = f" \\({escape_md(source)}\\)" if source else ""
             num = numeri[i] if i < len(numeri) else f"{i+1}\\."
-            lines.append(f"{num} [{escape_md(title)}]({url})")
+            lines.append(f"{num} [{escape_md(title)}]({url}){source_str}")
     lines.append("")
     return "\n".join(lines)
 
@@ -81,14 +89,14 @@ def build_message() -> str:
     data_str = f"{giorno} {now.day} {MESI_IT[now.month]} {now.year}"
     ora_str = now.strftime("%H:%M")
 
-    world  = get_news(section="world", page_size=4)
-    tech   = get_news(section="technology", query="AI OR artificial intelligence OR tech", page_size=4)
-    models = get_news(section="technology", query=AI_MODELS_QUERY, page_size=4)
-    seriea = get_news(query='"Serie A"', page_size=4)
+    world  = get_top_headlines(topic="world", max_results=4)
+    tech   = get_top_headlines(topic="technology", max_results=4)
+    models = get_search_news(query=AI_MODELS_QUERY, max_results=4)
+    seriea = get_search_news(query="Serie A", max_results=4)
 
     sep = "〰️〰️〰️〰️〰️〰️〰️〰️〰️\n\n"
 
-    msg  = f"🗞 *IL PUNTO DEL GIORNO*\n"
+    msg  = "🗞 *IL PUNTO DEL GIORNO*\n"
     msg += f"📅 {escape_md(data_str)} · 🕐 {escape_md(ora_str)}\n\n"
     msg += sep
     msg += format_section("🌍", "NOTIZIE DAL MONDO", world)
