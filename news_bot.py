@@ -47,23 +47,27 @@ def _fetch(url: str, params: dict) -> list[dict]:
     return resp.json().get("articles", [])
 
 
-def get_top_headlines(topic: str, max_results: int = 4) -> list[dict]:
-    return _fetch(GNEWS_TOP, {
+def get_top_headlines(topic: str, max_results: int = 4, lang: str = None) -> list[dict]:
+    params = {
         "token": GNEWS_API_KEY,
         "topic": topic,
-        "lang": "it",
         "max": max_results,
-    })
+    }
+    if lang:
+        params["lang"] = lang
+    return _fetch(GNEWS_TOP, params)
 
 
-def get_search_news(query: str, max_results: int = 4) -> list[dict]:
-    return _fetch(GNEWS_SEARCH, {
+def get_search_news(query: str, max_results: int = 4, lang: str = None) -> list[dict]:
+    params = {
         "token": GNEWS_API_KEY,
         "q": query,
-        "lang": "it",
         "max": max_results,
         "sortby": "publishedAt",
-    })
+    }
+    if lang:
+        params["lang"] = lang
+    return _fetch(GNEWS_SEARCH, params)
 
 
 def escape_md(text: str) -> str:
@@ -97,7 +101,7 @@ def build_message() -> str:
     world  = get_top_headlines(topic="world", max_results=4)
     tech   = get_top_headlines(topic="technology", max_results=4)
     models = get_search_news(query=AI_MODELS_QUERY, max_results=4)
-    seriea = get_search_news(query="Serie A", max_results=4)
+    seriea = get_search_news(query="Serie A", max_results=4, lang="it")
 
     sep = "〰️〰️〰️〰️〰️〰️〰️〰️〰️\n\n"
 
