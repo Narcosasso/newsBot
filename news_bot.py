@@ -13,18 +13,19 @@ GUARDIAN_URL = "https://content.guardianapis.com/search"
 TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 ITALY_TZ = pytz.timezone("Europe/Rome")
-# Target times (hour, minute) in Italian time
 TARGET_TIMES = [(8, 0), (10, 30), (20, 30)]
-# Tolerance window in minutes (to avoid double-sends when both CET and CEST crons fire)
 TIME_WINDOW = 25
+
+GIORNI_IT = ["Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato", "Domenica"]
+MESI_IT = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+           "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
 
 def is_scheduled_time() -> bool:
     now = datetime.now(ITALY_TZ)
     current_minutes = now.hour * 60 + now.minute
     for hour, minute in TARGET_TIMES:
-        target_minutes = hour * 60 + minute
-        if abs(current_minutes - target_minutes) <= TIME_WINDOW:
+        if abs(current_minutes - (hour * 60 + minute)) <= TIME_WINDOW:
             return True
     return False
 
@@ -47,37 +48,45 @@ def get_news(section: str = None, query: str = None, page_size: int = 5) -> list
     return resp.json()["response"]["results"]
 
 
-def format_section(header: str, articles: list[dict]) -> str:
-    lines = [header, ""]
-    for i, article in enumerate(articles, 1):
-        title = article["webTitle"]
-        url = article["webUrl"]
-        lines.append(f"{i}\\. [{escape_md(title)}]({url})")
-    lines.append("")
-    return "\n".join(lines)
-
-
 def escape_md(text: str) -> str:
-    """Escape MarkdownV2 special characters."""
     special = r"_*[]()~`>#+-=|{}.!"
     return "".join(f"\\{c}" if c in special else c for c in text)
 
 
+def format_section(emoji: str, titolo: str, articles: list[dict]) -> str:
+    numeri = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+    lines = [f"{emoji} *{titolo}*", ""]
+    for i, article in enumerate(articles):
+        title = article["webTitle"]
+        url = article["webUrl"]
+        num = numeri[i] if i < len(numeri) else f"{i+1}\\."
+        lines.append(f"{num} [{escape_md(title)}]({url})")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def build_message() -> str:
     now = datetime.now(ITALY_TZ)
-    date_str = now.strftime("%d/%m/%Y %H:%M")
+    giorno = GIORNI_IT[now.weekday()]
+    data_str = f"{giorno} {now.day} {MESI_IT[now.month]} {now.year}"
+    ora_str = now.strftime("%H:%M")
 
     world = get_news(section="world", page_size=5)
     tech = get_news(section="technology", query="AI OR artificial intelligence OR tech", page_size=5)
     seriea = get_news(query='"Serie A"', page_size=5)
 
-    msg = f"*Notizie del {escape_md(date_str)}*\n\n"
-    msg += "\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n\n"
-    msg += format_section("*1\\. Notizie dal Mondo*", world)
-    msg += "\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n\n"
-    msg += format_section("*2\\. AI & Tecnologia*", tech)
-    msg += "\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n\n"
-    msg += format_section("*3\\. Serie A*", seriea)
+    sep = "〰️〰️〰️〰️〰️〰️〰️〰️〰️\n\n"
+
+    msg  = f"🗞 *IL PUNTO DEL GIORNO*\n"
+    msg += f"📅 {escape_md(data_str)} · 🕐 {escape_md(ora_str)}\n\n"
+    msg += sep
+    msg += format_section("🌍", "NOTIZIE DAL MONDO", world)
+    msg += sep
+    msg += format_section("🤖", "AI & TECNOLOGIA", tech)
+    msg += sep
+    msg += format_section("⚽", "SERIE A", seriea)
+    msg += "〰️〰️〰️〰️〰️〰️〰️〰️〰️\n"
+    msg += "📲 _Buona lettura\\!_"
 
     return msg
 
@@ -94,7 +103,7 @@ def send_message(text: str) -> None:
     result = resp.json()
     if not result.get("ok"):
         raise RuntimeError(f"Telegram error: {result}")
-    print("Message sent successfully.")
+    print("Messaggio inviato con successo.")
 
 
 def main():
@@ -102,12 +111,12 @@ def main():
 
     if not force and not is_scheduled_time():
         now = datetime.now(ITALY_TZ)
-        print(f"Skipping: current Italian time {now.strftime('%H:%M')} is not within a scheduled window.")
+        print(f"Fuori orario: ora italiana {now.strftime('%H:%M')}, nessun invio.")
         return
 
-    print("Fetching news...")
+    print("Recupero notizie...")
     message = build_message()
-    print("Sending Telegram message...")
+    print("Invio messaggio Telegram...")
     send_message(message)
 
 
