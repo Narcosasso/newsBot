@@ -63,6 +63,8 @@ def create_app(container: Container | None = None) -> FastAPI:
             state["c"] = container or build_container(get_settings())
         return state["c"]
 
+    # Su Cloud Run i percorsi che finiscono con "z" (es. /healthz) sono riservati da Google: si usa /health.
+    @app.get("/health")
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
         return {"status": "ok"}

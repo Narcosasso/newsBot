@@ -90,3 +90,9 @@ def test_parse_events_kinds():
     assert [(e.message_id, e.kind) for e in events] == [("a", "image"), ("b", "button"), ("c", "other")]
     assert events[0].media_id == "MEDIA" and events[0].text == "ita, eng"
     assert events[1].button_id == "cand:1"
+
+
+def test_health_endpoints(client):
+    c, _ = client
+    assert c.get("/health").json() == {"status": "ok"}  # usato su Cloud Run (/healthz lì è riservato)
+    assert c.get("/healthz").status_code == 200
