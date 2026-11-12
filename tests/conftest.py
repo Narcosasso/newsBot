@@ -36,6 +36,17 @@ class FakeCatalog:
     async def get_card(self, lang: str, card_id: str) -> dict[str, Any] | None:
         return self._file(f"{lang}/cards/{card_id}")
 
+    async def search_sets(self, lang: str, filters: dict[str, str]) -> list[dict[str, Any]]:
+        """Simula il filtro esatto abbreviation.official=eq:XXX sui dettagli dei set presenti nelle fixture."""
+        self.calls.append(f"search_sets {lang} {sorted(filters.items())}")
+        wanted = filters.get("abbreviation.official", "").removeprefix("eq:")
+        out = []
+        for f in sorted(FIXTURES.glob(f"{lang}_sets_*.json")):
+            s = json.loads(f.read_text(encoding="utf-8"))
+            if (s.get("abbreviation") or {}).get("official") == wanted:
+                out.append({k: s[k] for k in ("id", "name", "cardCount") if k in s})
+        return out
+
     async def search_cards(self, lang: str, filters: dict[str, str]) -> list[dict[str, Any]]:
         self.calls.append(f"search {lang} {sorted(filters.items())}")
         name = self.searches.get((lang, frozenset(filters.items())))

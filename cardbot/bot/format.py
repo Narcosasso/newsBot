@@ -74,10 +74,15 @@ def format_quotes(title: str, variant: str, quotes: list[LangQuote], tz: str = "
     return "\n".join(lines).strip()
 
 
-HELP = """*Comandi*
-• Invia la *foto* di una carta per riconoscerla e vedere i prezzi
-• Nella didascalia della foto puoi già scrivere le lingue, es. _ita, eng, jap_
+HELP = """*Come cercare una carta*
+• 📸 Invia la *foto* della carta. Nella didascalia puoi già scrivere le lingue, es. _ita, eng, jap_
+• ⌨️ Oppure scrivi *codice set e numero* stampati in basso sulla carta (gratis, nessuna foto):
+   _MEW 006_ · _PAL 123/193_ · _SV2a 006/165_ (giapponese)
+   Puoi aggiungere nome, lingue e variante: _Charizard ex MEW 006 reverse ita jap_
+
+*Comandi*
 • *lingue* – lingue supportate
+• *annulla* – interrompe la ricerca in corso
 • *aiuto* – questo messaggio
 
 _Tracking e notifiche arrivano nella prossima fase._"""

@@ -128,6 +128,40 @@ async def test_cancel_resets_state(make):
     assert stage(sessions) == "idle"
 
 
+async def test_text_search_with_langs_replies_prices_without_vision(make):
+    engine, out, sessions = make(FakeVision(error=AssertionError("la vision non va usata")))
+    await engine.handle(Incoming(WA, "text", text="MEW 006 ita jap"))
+    assert "8,13 €" in out.last[1] and "JAP" in out.last[1] and stage(sessions) == "idle"
+
+
+async def test_text_search_with_variant_word(make):
+    engine, out, _ = make(FakeVision())
+    await engine.handle(Incoming(WA, "text", text="MEW 001 reverse ita"))
+    assert "Reverse holo" in out.last[1] and "0,38 €" in out.last[1]
+
+
+async def test_text_search_restarts_a_pending_conversation(make):
+    engine, out, sessions = make(FakeVision(vr(name="Charizard ex", confidence=0.9)))
+    await engine.handle(Incoming(WA, "image", image=b"x"))
+    assert stage(sessions) == "awaiting_candidate"
+    await engine.handle(Incoming(WA, "text", text="MEW 006 eng"))
+    assert "TCGplayer" in out.last[1] and stage(sessions) == "idle"
+
+
+async def test_variant_can_be_chosen_by_number(make):
+    engine, out, _ = make(FakeVision())
+    await engine.handle(Incoming(WA, "text", text="MEW 001 ita"))
+    assert "Quale versione" in out.last[1]
+    await engine.handle(Incoming(WA, "text", text="2"))
+    assert "Reverse holo" in out.last[1] and "0,38 €" in out.last[1]
+
+
+async def test_text_search_not_found(make):
+    engine, out, _ = make(FakeVision())
+    await engine.handle(Incoming(WA, "text", text="ZZZ 999"))
+    assert "Non trovo" in out.last[1] and "MEW 006" in out.last[1]
+
+
 async def test_help(make):
     engine, out, _ = make(FakeVision())
     await engine.handle(Incoming(WA, "text", text="aiuto"))

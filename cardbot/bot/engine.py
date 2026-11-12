@@ -12,7 +12,8 @@ from cardbot.bot.format import HELP, format_quotes
 from cardbot.db import get_or_create_user, load_state, save_state
 from cardbot.langs import format_langs, parse_langs, supported_help
 from cardbot.prices.service import PriceService
-from cardbot.recognition.matcher import Candidate, CardMatcher
+from cardbot.recognition.matcher import Candidate, CardMatcher, MatchResult
+from cardbot.recognition.text_query import TextQuery, parse_query
 from cardbot.recognition.vision import CardVision, VisionError
 from cardbot.variants import LABELS_IT, choose_variant
 
@@ -20,6 +21,8 @@ log = logging.getLogger(__name__)
 
 BAD_PHOTO_TIPS = ("Prova con una foto più nitida: carta dritta, ben illuminata, senza riflessi, "
                   "con nome e numero in basso leggibili.")
+TEXT_TIP = ("Puoi anche scrivere codice set e numero stampati in basso sulla carta, es. *MEW 006*, "
+            "*SV2a 006/165* oppure *Charizard ex 006/165*.")
 
 
 @dataclass
@@ -70,7 +73,11 @@ class Engine:
         lowered = reply.lower()
         if lowered in {"annulla", "reset"}:
             save_state(state, "idle")
-            await self._out.send_text(user.wa_id, "Ok, annullato. Mandami una foto quando vuoi.")
+            await self._out.send_text(user.wa_id, "Ok, annullato. Mandami una foto o un codice quando vuoi.")
+            return
+        query = parse_query(reply) if msg.kind == "text" else None
+        if query and query.is_specific and state.stage != "idle" and not parse_langs(reply).ok:
+            await self._on_text_query(user, state, query)  # nuova ricerca a conversazione in corso
             return
         if state.stage == "awaiting_candidate":
             await self._on_candidate_reply(user, state, lowered)
@@ -82,9 +89,11 @@ class Engine:
             await self._out.send_text(user.wa_id, HELP)
         elif lowered == "lingue":
             await self._out.send_text(user.wa_id, f"Lingue supportate: {supported_help()}")
+        elif query:
+            await self._on_text_query(user, state, query)
         else:
-            await self._out.send_text(user.wa_id, "Mandami la foto di una carta Pokémon 📸 (scrivi *aiuto* "
-                                                  "per i comandi).")
+            await self._out.send_text(user.wa_id, "Mandami la foto di una carta Pokémon 📸 oppure codice set e "
+                                                  "numero (es. *MEW 006*). Scrivi *aiuto* per i comandi.")
 
     # --- foto ----------------------------------------------------------------------------------------
 
@@ -103,14 +112,25 @@ class Engine:
         if not result.candidates:
             read = ", ".join(x for x in (vision.name, vision.set_code, vision.number) if x) or "nulla"
             await self._out.send_text(user.wa_id, f"Ho letto: _{read}_, ma non trovo la carta nel catalogo. "
-                                                  + BAD_PHOTO_TIPS)
+                                                  + BAD_PHOTO_TIPS + "\n" + TEXT_TIP)
             return
+        caption = parse_langs(msg.text) if msg.text else None
+        await self._present_match(user, state, result, hint=vision.variant_hint,
+                                  langs=caption.langs if caption and caption.ok else None)
 
+    async def _on_text_query(self, user, state, query: TextQuery) -> None:
+        result = await self._matcher.match_text(query)
+        if not result.candidates:
+            await self._out.send_text(user.wa_id, "Non trovo questa carta nel catalogo. " + TEXT_TIP)
+            return
+        await self._present_match(user, state, result, hint=query.variant or "unknown", langs=query.langs or None)
+
+    async def _present_match(self, user, state, result: MatchResult, hint: str, langs: list[str] | None) -> None:
         payload = {
             "candidates": [asdict(c) for c in result.candidates],
-            "hint": vision.variant_hint,
+            "hint": hint,  # variante letta dalla foto o scritta nel testo; usata se la carta la prevede
             "warnings": result.warnings,
-            "langs": parse_langs(msg.text).langs if msg.text and parse_langs(msg.text).ok else None,
+            "langs": langs,
         }
         if result.confident:
             payload["selected"] = payload["candidates"][0]
@@ -121,7 +141,7 @@ class Engine:
         lines = ["🤔 Non sono sicuro al 100%. Quale di queste è?"]
         for i, c in enumerate(result.candidates, 1):
             lines.append(f"{i}) {c.short()}")
-        lines.append("Se nessuna è giusta, rimanda una foto più nitida.")
+        lines.append("Se nessuna è giusta, rimanda una foto più nitida o scrivi codice set e numero (es. MEW 006).")
         buttons = [(f"cand:{i}", str(i + 1)) for i in range(len(result.candidates))]
         await self._out.send_buttons(user.wa_id, "\n".join(lines), buttons)
 
@@ -170,7 +190,12 @@ class Engine:
         cand = Candidate(**payload["selected"])
         mapping = {"normale": "normal", "normal": "normal", "holo": "holo", "reverse": "reverse",
                    "reverse holo": "reverse"}
-        variant = reply.split(":", 1)[1] if reply.startswith("var:") else mapping.get(reply)
+        if reply.startswith("var:"):
+            variant = reply.split(":", 1)[1]
+        elif reply.isdigit() and 1 <= int(reply) <= len(cand.variants):
+            variant = cand.variants[int(reply) - 1]  # stesso ordine dei bottoni
+        else:
+            variant = mapping.get(reply)
         if variant not in cand.variants:
             options = ", ".join(LABELS_IT[v].lower() for v in cand.variants)
             await self._out.send_text(user.wa_id, f"Scegli una versione tra: {options}.")

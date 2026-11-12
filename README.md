@@ -2,6 +2,7 @@
 
 Bot WhatsApp personale: invii la foto di una carta Pokémon, il bot la riconosce (nome, set, numero, variante)
 e risponde con i prezzi per le lingue che scegli (es. *ita, eng, jap*).
+In alternativa scrivi codice set e numero (es. *MEW 006*): gratis, senza foto.
 
 **Stato:** fase MVP (foto → riconoscimento → prezzi per lingua). Tracking e notifiche arrivano nella prossima fase.
 
@@ -26,6 +27,16 @@ automatiche: per questo il bot non legge le inserzioni per lingua.
 ## Come funziona
 
 1. **Foto** → Claude vision legge nome, lingua, codice set, numero, regulation mark e indizi sulla variante.
+   **Oppure testo** → scrivi quello che è stampato in basso sulla carta. Non usa Claude, quindi non costa nulla:
+
+   | Scrivi | Trova |
+   |---|---|
+   | `MEW 006` o `mew 6` | Charizard ex, 151 (inglese/internazionale) |
+   | `SV2a 006/165` | リザードンex, ポケモンカード151 (giapponese) |
+   | `Charizard ex 006/165` | per nome e numero, senza codice set |
+   | `MEW 001 reverse ita jap` | con variante e lingue già indicate |
+
+   Solo il nome (`Charizard ex`) propone fino a 3 candidati.
 2. **Match** sul catalogo TCGdex nella lingua della carta: prima set + numero, poi il nome come verifica.
    Le carte coreane si cercano nel catalogo giapponese (stessi set e numeri). Se il bot non è sicuro propone
    2-3 candidati con i bottoni; se la variante (normale / holo / reverse) non si capisce dalla foto, la chiede.
@@ -60,7 +71,13 @@ Solo prezzi, senza nessuna chiave (id TCGdex della carta):
 python -m cardbot.cli prices sv03.5-006 --variant holo --langs "ita, eng, jap"
 ```
 
-Flusso completo da una foto (serve `ANTHROPIC_API_KEY` nel `.env`); se il bot ti fa domande rispondi nel terminale:
+Ricerca testuale come in chat, senza nessuna chiave (se il bot ti fa domande rispondi nel terminale):
+
+```bash
+python -m cardbot.cli search "MEW 006 ita jap"
+```
+
+Flusso completo da una foto (serve `ANTHROPIC_API_KEY` nel `.env`):
 
 ```bash
 python -m cardbot.cli simulate foto_carta.jpg --langs "ita, jap"
@@ -129,7 +146,8 @@ cardbot/
 ├── bot/format.py          # testi in italiano
 ├── catalog/tcgdex.py      # client TCGdex con cache e limite di richieste
 ├── recognition/vision.py  # Claude vision con output JSON vincolato
-├── recognition/matcher.py # match foto -> carta, punteggio e candidati
+├── recognition/matcher.py # match foto/testo -> carta, punteggio e candidati
+├── recognition/text_query.py # parsing di "MEW 006 reverse ita jap"
 ├── prices/                # quotazioni per lingua e scelta dei campi per variante
 ├── whatsapp/              # client Cloud API e parsing dei webhook
 ├── langs.py               # parsing "ita, eng, jap"

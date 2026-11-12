@@ -1,6 +1,7 @@
 """Strumenti locali, senza WhatsApp.
 
   python -m cardbot.cli simulate foto.jpg --langs ita,eng   # flusso completo (serve ANTHROPIC_API_KEY)
+  python -m cardbot.cli search "MEW 006 ita jap"            # ricerca testuale, nessuna chiave
   python -m cardbot.cli prices sv03.5-006 --variant holo --langs ita,eng,jap   # solo prezzi, nessuna chiave
 """
 
@@ -20,7 +21,7 @@ from cardbot.db import ConversationState, make_engine, make_session_factory
 from cardbot.langs import parse_langs
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import CardMatcher
-from cardbot.recognition.vision import CardVision
+from cardbot.recognition.vision import CardVision, VisionError
 
 CLI_USER = "cli-user"
 
@@ -36,19 +37,34 @@ class ConsoleMessenger:
         print()
 
 
+class NoVision:
+    async def read_card(self, image: bytes, media_type: str = "image/jpeg"):
+        raise VisionError("Riconoscimento foto non disponibile in questa modalità")
+
+
 async def simulate(image_path: Path, langs: str | None) -> int:
     settings = get_settings()
     if not settings.anthropic_api_key:
         print("Serve ANTHROPIC_API_KEY nel file .env per il riconoscimento della foto.", file=sys.stderr)
         return 2
+    media_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
+    vision = CardVision(settings.anthropic_api_key, settings.vision_model, settings.vision_effort)
+    return await _converse(vision, Incoming(wa_id=CLI_USER, kind="image", image=image_path.read_bytes(),
+                                            media_type=media_type, text=langs))
+
+
+async def search(text: str) -> int:
+    return await _converse(NoVision(), Incoming(wa_id=CLI_USER, kind="text", text=text))
+
+
+async def _converse(vision, first: Incoming) -> int:
+    settings = get_settings()
     sessions = make_session_factory(make_engine("sqlite://"))
     catalog = TCGdexCatalog(settings.tcgdex_base_url, settings.tcgdex_max_rps)
-    engine = Engine(sessions, ConsoleMessenger(),
-                    CardVision(settings.anthropic_api_key, settings.vision_model, settings.vision_effort),
-                    CardMatcher(catalog), PriceService(catalog), timezone=settings.timezone)
-    media_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
-    await engine.handle(Incoming(wa_id=CLI_USER, kind="image", image=image_path.read_bytes(),
-                                 media_type=media_type, text=langs))
+    engine = Engine(sessions, ConsoleMessenger(), vision, CardMatcher(catalog), PriceService(catalog),
+                    timezone=settings.timezone)
+    print(f"tu> {first.text or '[foto]'}")
+    await engine.handle(first)
     while True:
         with sessions() as s:
             stage = (s.get(ConversationState, 1) or ConversationState(stage="idle")).stage
@@ -85,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
     p_sim = sub.add_parser("simulate", help="simula una conversazione partendo da una foto")
     p_sim.add_argument("image", type=Path)
     p_sim.add_argument("--langs", help="lingue, es. 'ita,eng,jap' (altrimenti te le chiede)")
+    p_se = sub.add_parser("search", help="simula una ricerca testuale, es. 'MEW 006 ita jap' (nessuna chiave)")
+    p_se.add_argument("text")
     p_pr = sub.add_parser("prices", help="prezzi di una carta TCGdex per lingua")
     p_pr.add_argument("card_id", help="id TCGdex, es. sv03.5-006 o SV2a-006")
     p_pr.add_argument("--catalog", default="en", help="catalogo TCGdex della carta (en, it, ja, …)")
@@ -93,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.cmd == "simulate":
         return asyncio.run(simulate(args.image, args.langs))
+    if args.cmd == "search":
+        return asyncio.run(search(args.text))
     return asyncio.run(prices(args.card_id, args.catalog, args.variant, args.langs))
 
 

@@ -68,3 +68,6 @@ class TCGdexCatalog:
 
     async def search_cards(self, lang: str, filters: dict[str, str]) -> list[dict[str, Any]]:
         return await self._get(f"/{lang}/cards", SEARCH_TTL, params=filters) or []
+
+    async def search_sets(self, lang: str, filters: dict[str, str]) -> list[dict[str, Any]]:
+        return await self._get(f"/{lang}/sets", SETS_TTL, params=filters) or []
