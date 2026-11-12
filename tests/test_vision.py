@@ -53,3 +53,13 @@ async def test_request_shape():
     assert captured["fallbacks"] == "default"
     image = captured["messages"][0]["content"][0]
     assert image["type"] == "image" and image["source"]["media_type"] == "image/jpeg"
+
+
+async def test_without_api_key_photos_are_disabled_with_a_helpful_message():
+    from cardbot.recognition.vision import DisabledVision, make_vision
+
+    vision = make_vision("", "claude-opus-5-5", "medium")
+    assert isinstance(vision, DisabledVision)
+    with pytest.raises(VisionError, match="MEW 006"):
+        await vision.read_card(b"x")
+    assert isinstance(make_vision("k", "claude-opus-5-5", "medium"), CardVision)

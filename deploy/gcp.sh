@@ -85,7 +85,18 @@ cmd_deploy() {
   local envfile secrets_flag="" image
   envfile="$(mktemp)"
   write_env_yaml "$envfile"
-  for name in "${SECRETS[@]}"; do secrets_flag+="${name}=${name}:latest,"; done
+  # Collega solo i segreti presenti: ANTHROPIC_API_KEY è facoltativa (senza, il bot usa solo la ricerca testuale).
+  for name in "${SECRETS[@]}"; do
+    if gc secrets versions describe latest --secret "$name" >/dev/null 2>&1; then
+      secrets_flag+="${name}=${name}:latest,"
+    elif [ "$name" != "ANTHROPIC_API_KEY" ]; then
+      echo "Manca il segreto $name: compilalo nel $ENV_FILE e lancia prima '$0 secrets'." >&2
+      rm -f "$envfile"
+      exit 1
+    else
+      echo "ANTHROPIC_API_KEY assente: foto disattivate, funziona solo la ricerca testuale." >&2
+    fi
+  done
   secrets_flag="${secrets_flag%,}"   # es. WHATSAPP_TOKEN=WHATSAPP_TOKEN:latest,…
 
   # Webhook: pubblico (Meta deve raggiungerlo; ogni richiesta è verificata con la firma X-Hub-Signature-256).

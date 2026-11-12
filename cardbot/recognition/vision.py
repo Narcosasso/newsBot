@@ -119,6 +119,18 @@ class CardVision:
         return parse_response(response)
 
 
+class DisabledVision:
+    """Usata quando ANTHROPIC_API_KEY non è configurata: il bot funziona solo con la ricerca testuale."""
+
+    async def read_card(self, image: bytes, media_type: str = "image/jpeg") -> VisionResult:
+        raise VisionError("Il riconoscimento delle foto non è attivo. Scrivi codice set e numero stampati in "
+                          "basso sulla carta, es. *MEW 006* o *SV2a 006/165*")
+
+
+def make_vision(api_key: str, model: str, effort: str) -> CardVision | DisabledVision:
+    return CardVision(api_key, model, effort) if api_key else DisabledVision()
+
+
 def parse_response(response) -> VisionResult:
     if response.stop_reason == "refusal":
         raise VisionError("Il servizio di riconoscimento non ha elaborato questa immagine")

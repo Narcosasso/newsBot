@@ -238,6 +238,47 @@ Architettura:
 | Database | **Neon** (Postgres gestito) | piano Free; lo schema lo crea Alembic a ogni avvio del container |
 | Segreti | **Secret Manager** | token Meta, App Secret, verify token, chiave Anthropic, URL del database |
 
+### Tutto dal telefono
+
+Si può fare tutto dal browser del telefono, senza computer. Per i siti di Meta (developers.facebook.com,
+business.facebook.com, WhatsApp Manager) attiva **"Sito desktop"** nel browser: alcune pagine su mobile rimandano
+all'app o nascondono dei menu.
+
+1. **Neon** (passo 1 qui sotto) e **Meta** (sezione "Setup Meta / WhatsApp", salta il tunnel locale): tutto da browser.
+   Copia i valori in una nota mentre li ottieni.
+2. **Google Cloud**: progetto, fatturazione e budget dalla [console](https://console.cloud.google.com) (passo 2,
+   tranne l'installazione di gcloud, che non serve).
+3. Apri **[Cloud Shell](https://shell.cloud.google.com)**: un terminale nel browser con `gcloud` e `git` già pronti
+   e già collegato al tuo account. Scarica il progetto (se il repository è privato, GitHub chiede utente e un
+   [token personale](https://github.com/settings/personal-access-tokens) con permesso di sola lettura al posto
+   della password):
+
+```bash
+git clone -b claude/vibrant-thompson-q8qql6 https://github.com/Narcosasso/newsBot.git && cd newsBot
+```
+
+4. Crea il `.env` e incolla i valori (in nano: salva con *Ctrl+O*, Invio, esci con *Ctrl+X*; sulla tastiera di
+   Cloud Shell da telefono c'è il tasto *Ctrl*):
+
+```bash
+cp .env.example .env && nano .env
+```
+
+5. Lancia il deploy con il tuo Project ID:
+
+```bash
+PROJECT_ID=cardbot-123456 ./deploy/gcp.sh all
+```
+
+6. Copia il **Callback URL** stampato alla fine e incollalo nel webhook su Meta (passo 4). Poi scrivi *aiuto* al bot.
+
+Il `.env` resta nella cartella personale di Cloud Shell, protetta dal tuo account Google. Se preferisci, cancellalo
+dopo il deploy: i segreti sono già in Secret Manager.
+
+**Puoi partire anche senza la chiave Anthropic**: lascia vuoto `ANTHROPIC_API_KEY` e il bot funziona con la
+ricerca testuale (*MEW 006*), gratis. A una foto risponde spiegando di scrivere codice set e numero. Per attivare
+le foto più avanti, aggiungi la chiave al `.env` e rilancia `./deploy/gcp.sh secrets` e poi `./deploy/gcp.sh deploy`.
+
 ### 1. Database su Neon
 
 1. Crea un account su [neon.com](https://neon.com) (piano Free, senza carta).
