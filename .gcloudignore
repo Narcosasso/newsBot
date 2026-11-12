@@ -1,0 +1,13 @@
+# File esclusi dal caricamento su Cloud Build (gcloud run deploy --source).
+# .env contiene i segreti: non deve mai lasciare il tuo computer (in produzione arrivano da Secret Manager).
+.env
+.env.*
+!.env.example
+.git
+.github
+.venv
+*.db
+**/__pycache__
+.pytest_cache
+*.egg-info
+tests

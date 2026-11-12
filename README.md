@@ -4,7 +4,7 @@ Bot WhatsApp personale: invii la foto di una carta Pokémon, il bot la riconosce
 e risponde con i prezzi per le lingue che scegli (es. *ita, eng, jap*).
 In alternativa scrivi codice set e numero (es. *MEW 006*): gratis, senza foto.
 
-**Stato:** riconoscimento, prezzi per lingua, tracking, notifiche e comandi. Prossimo: deploy.
+**Stato:** completo: riconoscimento, prezzi per lingua, tracking, notifiche, comandi e deploy su Google Cloud.
 
 ## Cosa dicono davvero i prezzi
 
@@ -221,8 +221,119 @@ cardbot/
 ├── langs.py               # parsing "ita, eng, jap"
 ├── db.py                  # SQLAlchemy (SQLite in locale, Postgres in produzione)
 └── cli.py                 # simulatore e lookup prezzi da terminale
+migrations/                # Alembic
+deploy/gcp.sh              # deploy su Google Cloud
+deploy/entrypoint.sh       # avvio container: migrazioni, poi webhook o job
+Dockerfile
 ```
 
-## Prossime fasi
+## Deploy (Google Cloud Run + Neon, uso personale ≈ 0 €)
 
-- **Deploy**: Cloud Run (webhook) + Cloud Scheduler (job) + Neon (Postgres), segreti da Secret Manager.
+Architettura:
+
+| Pezzo | Servizio | Note |
+|---|---|---|
+| Webhook WhatsApp | **Cloud Run service** `cardbot` | URL HTTPS pubblico incluso, scala a zero, max 1 istanza |
+| Controllo prezzi giornaliero | **Cloud Run job** `cardbot-poll` | stessa immagine, avviato da Cloud Scheduler alle 04:00 (Europe/Rome) |
+| Database | **Neon** (Postgres gestito) | piano Free; lo schema lo crea Alembic a ogni avvio del container |
+| Segreti | **Secret Manager** | token Meta, App Secret, verify token, chiave Anthropic, URL del database |
+
+### 1. Database su Neon
+
+1. Crea un account su [neon.com](https://neon.com) (piano Free, senza carta).
+2. *New project*: regione **AWS Europe (Frankfurt)**, Postgres 16 o successivo.
+3. *Connect* → copia la connection string (va bene quella *pooled*), es.
+   `postgresql://utente:password@ep-xxx-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require`
+4. Mettila in `DATABASE_URL` nel tuo `.env` (il bot aggiunge da solo il driver `psycopg`).
+
+### 2. Progetto Google Cloud
+
+1. Crea un account su [console.cloud.google.com](https://console.cloud.google.com) e un **progetto** (annota il
+   *Project ID*, es. `cardbot-123456`).
+2. *Billing*: collega un account di fatturazione. Serve una carta anche se resti nelle quote gratuite.
+3. **Avviso di budget** (consigliato): *Billing → Budgets & alerts → Create budget*, importo **1 €**, avvisi al
+   50/90/100%. Ti scrive un'email se qualcosa inizia a costare.
+4. Installa la [gcloud CLI](https://cloud.google.com/sdk/docs/install) e accedi:
+
+```bash
+gcloud auth login
+```
+
+### 3. Deploy
+
+Compila il `.env` completo (Meta, Anthropic, Neon, `ALLOWED_WA_IDS`), poi dalla cartella del progetto:
+
+```bash
+PROJECT_ID=cardbot-123456 ./deploy/gcp.sh all
+```
+
+Lo script, rilanciabile:
+
+- `setup` abilita le API (Cloud Run, Scheduler, Secret Manager, Artifact Registry, Cloud Build) e crea due
+  service account con i soli permessi necessari;
+- `secrets` copia in Secret Manager i 5 segreti dal `.env`, passandoli da stdin; crea una nuova versione solo
+  se il valore è cambiato;
+- `deploy` costruisce l'immagine con Cloud Build (`.env` escluso dal caricamento tramite `.gcloudignore`), pubblica
+  il webhook e il job con la stessa immagine e tiene solo le ultime 2 immagini;
+- `schedule` pianifica il job ogni giorno alle 04:00 ora italiana;
+- alla fine stampa il **Callback URL**, es. `https://cardbot-xxxx.europe-west1.run.app/webhook`.
+
+### 4. Collega Meta
+
+In *WhatsApp → Configuration → Webhook* sostituisci il Callback URL (quello del tunnel locale) con l'URL stampato,
+stesso verify token, *Verify and save*, campo **messages** sottoscritto. Poi scrivi *aiuto* al bot.
+
+### Operazioni utili
+
+Eseguire subito il controllo prezzi:
+
+```bash
+gcloud run jobs execute cardbot-poll --region europe-west1 --wait
+```
+
+Log del webhook:
+
+```bash
+gcloud run services logs read cardbot --region europe-west1 --limit 50
+```
+
+Dopo una modifica al codice (le migrazioni del database partono da sole all'avvio):
+
+```bash
+PROJECT_ID=cardbot-123456 ./deploy/gcp.sh deploy
+```
+
+Dopo aver cambiato un segreto nel `.env`:
+
+```bash
+PROJECT_ID=cardbot-123456 ./deploy/gcp.sh secrets
+```
+
+```bash
+PROJECT_ID=cardbot-123456 ./deploy/gcp.sh deploy
+```
+
+### Costi attesi (quote verificate a novembre 2026, ricontrolla le pagine ufficiali)
+
+- **Cloud Run**: il webhook usa la CPU sempre allocata, perché la foto si elabora dopo aver già risposto a Meta.
+  Quota gratuita mensile con questa modalità: 240.000 vCPU-secondi e 450.000 GiB-secondi
+  ([prezzi](https://cloud.google.com/run/pricing)). Un'istanza resta accesa fino a circa 15 minuti dopo l'ultimo
+  messaggio, quindi circa 900 vCPU-secondi per conversazione: circa 250 conversazioni al mese gratis. Il job usa
+  circa un minuto al giorno.
+- **Cloud Scheduler**: 3 job gratuiti per account di fatturazione (ne usiamo 1).
+- **Secret Manager, Artifact Registry, Cloud Build**: nelle quote gratuite con questo uso.
+- **Neon Free**: 1 GB e 100 ore di calcolo al mese per progetto; il database si sospende dopo 5 minuti di
+  inattività (il primo messaggio dopo una pausa è più lento di uno o due secondi).
+- Restano i costi d'uso già visti: Claude per le foto (circa 1-4 centesimi a foto) e i template WhatsApp oltre le
+  24 ore (circa 0,03 $).
+
+### Database e migrazioni
+
+Lo schema è gestito da **Alembic** (`migrations/`). Il container esegue `alembic upgrade head` a ogni avvio; in
+locale con SQLite le tabelle si creano da sole. Se cambi i modelli in `cardbot/db.py`:
+
+```bash
+alembic revision --autogenerate -m "descrizione"
+```
+
+Il test `tests/test_migrations.py` fallisce se migrazioni e modelli non coincidono.

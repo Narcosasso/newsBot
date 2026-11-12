@@ -1,0 +1,12 @@
+[
+  {
+    "name": "tieni-ultime-2",
+    "action": {"type": "Keep"},
+    "mostRecentVersions": {"keepCount": 2}
+  },
+  {
+    "name": "elimina-vecchie",
+    "action": {"type": "Delete"},
+    "condition": {"tagState": "any", "olderThan": "1d"}
+  }
+]

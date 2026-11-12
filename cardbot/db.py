@@ -160,14 +160,28 @@ class ConversationState(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
-def make_engine(url: str) -> Engine:
+def normalize_url(url: str) -> str:
+    """Neon e altri provider danno 'postgresql://…' o 'postgres://…': per SQLAlchemy serve il driver psycopg."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
+def make_engine(url: str, create_tables: bool | None = None) -> Engine:
+    """Con SQLite le tabelle si creano da sole (sviluppo e test); con Postgres le gestisce Alembic."""
+    url = normalize_url(url)
     kwargs: dict[str, Any] = {"pool_pre_ping": True}
-    if url.startswith("sqlite"):
+    is_sqlite = url.startswith("sqlite")
+    if is_sqlite:
         kwargs["connect_args"] = {"check_same_thread": False}
         if url in ("sqlite://", "sqlite:///:memory:"):
             kwargs["poolclass"] = StaticPool  # un solo DB in memoria condiviso fra i thread
+    else:
+        kwargs["pool_size"], kwargs["max_overflow"] = 2, 2  # uso personale: poche connessioni (Neon free)
     engine = create_engine(url, **kwargs)
-    Base.metadata.create_all(engine)
+    if create_tables if create_tables is not None else is_sqlite:
+        Base.metadata.create_all(engine)
     return engine
 
 

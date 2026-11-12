@@ -1,12 +1,13 @@
 """Job giornaliero e outbox: idempotenza, finestra di 24 ore, errori di invio."""
 
+import os
 from datetime import timedelta
 
 import pytest
 
 from cardbot.alerts.outbox import digest_text, send_pending, template_params
 from cardbot.alerts.sources import PriceData
-from cardbot.db import Notification, PriceSnapshot, Tracking, TrackingTarget, User, make_engine, \
+from cardbot.db import Base, Notification, PriceSnapshot, Tracking, TrackingTarget, User, make_engine, \
     make_session_factory, utcnow
 from cardbot.jobs.poll import run_poll
 
@@ -57,7 +58,12 @@ class FakeSender:
 
 @pytest.fixture
 def db():
-    sessions = make_session_factory(make_engine("sqlite://"))
+    # TEST_DATABASE_URL=postgresql://… esegue questi test anche su Postgres (vincoli UNIQUE e savepoint reali).
+    url = os.environ.get("TEST_DATABASE_URL", "sqlite://")
+    engine = make_engine(url, create_tables=False)
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    sessions = make_session_factory(engine)
     with sessions() as s:
         user = User(wa_id=WA, last_inbound_at=utcnow())
         s.add(user)
