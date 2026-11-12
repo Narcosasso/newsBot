@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     whatsapp_phone_number_id: str = ""
     whatsapp_app_secret: str = ""
     whatsapp_verify_token: str = ""
-    whatsapp_api_version: str = "v24.0"
+    whatsapp_api_version: str = "v25.0"
     # Numeri autorizzati (formato wa_id, es. 393331234567), separati da virgola. Vuoto = nessun filtro.
     allowed_wa_ids: str = ""
     # Template "utility" approvato per le notifiche oltre la finestra di 24 ore (vedi README).

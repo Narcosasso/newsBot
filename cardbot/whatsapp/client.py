@@ -19,7 +19,7 @@ class WhatsAppError(RuntimeError):
 
 
 class WhatsAppClient:
-    def __init__(self, token: str, phone_number_id: str, api_version: str = "v24.0",
+    def __init__(self, token: str, phone_number_id: str, api_version: str = "v25.0",
                  client: httpx.AsyncClient | None = None) -> None:
         self._token = token
         self._phone_id = phone_number_id
