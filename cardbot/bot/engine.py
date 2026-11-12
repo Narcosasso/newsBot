@@ -8,10 +8,11 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from cardbot.alerts.rules import effective_threshold
+from cardbot.alerts.rules import Threshold, effective_threshold
 from cardbot.alerts.tracking import target_specs, upsert_tracking
-from cardbot.bot.format import HELP, format_quotes
-from cardbot.db import get_or_create_user, load_state, save_state, utcnow
+from cardbot.bot.commands import Command, parse_command
+from cardbot.bot.format import HELP, format_quotes, format_tracking_list
+from cardbot.db import Tracking, get_or_create_user, load_state, save_state, utcnow
 from cardbot.langs import format_langs, label, parse_langs, supported_help
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import Candidate, CardMatcher, MatchResult
@@ -80,6 +81,13 @@ class Engine:
             save_state(state, "idle")
             await self._out.send_text(user.wa_id, "Ok, annullato. Mandami una foto o un codice quando vuoi.")
             return
+        command = parse_command(reply) if msg.kind == "text" else None
+        if command is not None:
+            if command.kind == "langs" and command.index is None and state.stage == "awaiting_langs":
+                await self._on_langs_reply(user, state, " ".join(command.langs))  # "lingue ita, jap" come risposta
+            else:
+                await self._on_command(session, user, state, command)
+            return
         query = parse_query(reply) if msg.kind == "text" else None
         if query and query.is_specific and state.stage != "idle" and not parse_langs(reply).ok:
             await self._on_text_query(user, state, query)  # nuova ricerca a conversazione in corso
@@ -92,10 +100,6 @@ class Engine:
             await self._on_langs_reply(user, state, reply)
         elif state.stage == "awaiting_notify" and lowered in YES | NO:
             await self._on_notify_reply(session, user, state, lowered)
-        elif lowered in {"aiuto", "help", "?", "ciao", "start"}:
-            await self._out.send_text(user.wa_id, HELP)
-        elif lowered == "lingue":
-            await self._out.send_text(user.wa_id, f"Lingue supportate: {supported_help()}")
         elif query:
             await self._on_text_query(user, state, query)
         else:
@@ -260,3 +264,121 @@ class Engine:
                          + ", ".join(label(x) for x in result.untracked_langs))
         lines.append("_Controllo i prezzi una volta al giorno, quando Cardmarket li aggiorna._")
         await self._out.send_text(user.wa_id, "\n".join(lines))
+
+    # --- comandi di gestione -------------------------------------------------------------------------
+
+    def _trackings(self, session, user) -> list[Tracking]:
+        return (session.query(Tracking).filter_by(user_id=user.id, active=True).order_by(Tracking.id).all())
+
+    async def _pick(self, session, user, index: int | None) -> Tracking | None:
+        """La carta n della lista (se ne segui una sola il numero si può omettere)."""
+        trackings = self._trackings(session, user)
+        if not trackings:
+            await self._out.send_text(user.wa_id, "Non segui nessuna carta. Cercane una e rispondi *sì* "
+                                                  "quando ti chiedo delle notifiche.")
+            return None
+        if index is None and len(trackings) == 1:
+            return trackings[0]
+        if index is None or not 1 <= index <= len(trackings):
+            await self._out.send_text(user.wa_id, f"Indica il numero della carta (da 1 a {len(trackings)}).\n\n"
+                                                  + format_tracking_list(trackings, user))
+            return None
+        return trackings[index - 1]
+
+    async def _on_command(self, session, user, state, cmd: Command) -> None:
+        if cmd.kind == "help":
+            await self._out.send_text(user.wa_id, HELP)
+        elif cmd.kind == "supported_langs":
+            await self._out.send_text(user.wa_id, f"Lingue supportate: {supported_help()}")
+        elif cmd.kind == "error":
+            await self._out.send_text(user.wa_id, cmd.error)
+        elif cmd.kind == "list":
+            trackings = self._trackings(session, user)
+            text = format_tracking_list(trackings, user) if trackings else (
+                "Non segui ancora nessuna carta. Cercane una (foto o es. *MEW 006*) e rispondi *sì* "
+                "quando ti chiedo delle notifiche.")
+            await self._out.send_text(user.wa_id, text)
+        elif cmd.kind == "stop":
+            await self._cmd_stop(session, user, cmd)
+        elif cmd.kind == "langs":
+            await self._cmd_langs(session, user, cmd)
+        elif cmd.kind == "threshold_show":
+            th = Threshold(pct=user.threshold_pct, eur=user.threshold_eur)
+            await self._out.send_text(user.wa_id, f"Soglia generale: avviso se il trend cambia di almeno "
+                                                  f"*{th.describe()}*.\nPer cambiarla: *soglia 15%*, *soglia 2€*, "
+                                                  "*soglia 15% 2€* (0 disattiva una condizione); per una sola "
+                                                  "carta: *soglia 1 20%*.")
+        elif cmd.kind == "threshold":
+            await self._cmd_threshold(session, user, cmd)
+
+    async def _cmd_stop(self, session, user, cmd: Command) -> None:
+        if cmd.all:
+            trackings = self._trackings(session, user)
+            for t in trackings:
+                t.active = False
+            await self._out.send_text(user.wa_id, f"🔕 Non seguo più nessuna carta ({len(trackings)} rimosse).")
+            return
+        tracking = await self._pick(session, user, cmd.index)
+        if tracking is None:
+            return
+        tracking.active = False
+        session.flush()
+        remaining = self._trackings(session, user)
+        text = f"🔕 Non seguo più *{tracking.label}* ({LABELS_IT.get(tracking.variant, tracking.variant)})."
+        if remaining:
+            text += "\n\n" + format_tracking_list(remaining, user)
+        await self._out.send_text(user.wa_id, text)
+
+    async def _cmd_langs(self, session, user, cmd: Command) -> None:
+        tracking = await self._pick(session, user, cmd.index)
+        if tracking is None:
+            return
+        quotes = await self._prices.quotes(tracking.card_id, tracking.catalog_lang, tracking.variant, cmd.langs)
+        specs = target_specs(quotes)
+        if not specs:
+            await self._out.send_text(user.wa_id, "Nessuna di queste lingue ha prezzi tracciabili: lingue "
+                                                  "non modificate.")
+            return
+        result = upsert_tracking(session, user, card_id=tracking.card_id, catalog_lang=tracking.catalog_lang,
+                                 variant=tracking.variant, label=tracking.label, langs=cmd.langs, specs=specs)
+        text = (f"✅ *{tracking.label}*: ora seguo "
+                + " · ".join(label(x) for x in result.tracked_langs) + ".")
+        if result.untracked_langs:
+            text += "\nNon tracciabili (nessun prezzo): " + ", ".join(label(x) for x in result.untracked_langs)
+        await self._out.send_text(user.wa_id, text)
+
+    async def _cmd_threshold(self, session, user, cmd: Command) -> None:
+        if cmd.index is None:
+            if cmd.set_pct:
+                user.threshold_pct = cmd.pct
+            if cmd.set_eur:
+                user.threshold_eur = cmd.eur
+            th = Threshold(pct=user.threshold_pct, eur=user.threshold_eur)
+            custom = sum(1 for t in self._trackings(session, user) if t.threshold_custom)
+            note = ""
+            if custom == 1:
+                note = "\n_1 carta ha una soglia propria e non cambia._"
+            elif custom > 1:
+                note = f"\n_{custom} carte hanno una soglia propria e non cambiano._"
+            await self._out.send_text(user.wa_id, f"✅ Soglia generale: avviso se il trend cambia di almeno "
+                                                  f"*{th.describe()}*.{note}")
+            return
+        tracking = await self._pick(session, user, cmd.index)
+        if tracking is None:
+            return
+        if cmd.reset:
+            tracking.threshold_custom = False
+            th = Threshold(pct=user.threshold_pct, eur=user.threshold_eur)
+            await self._out.send_text(user.wa_id, f"✅ *{tracking.label}* usa di nuovo la soglia generale "
+                                                  f"({th.describe()}).")
+            return
+        if not tracking.threshold_custom:  # parte dalla soglia generale e cambia solo ciò che hai indicato
+            tracking.threshold_pct, tracking.threshold_eur = user.threshold_pct, user.threshold_eur
+            tracking.threshold_custom = True
+        if cmd.set_pct:
+            tracking.threshold_pct = cmd.pct
+        if cmd.set_eur:
+            tracking.threshold_eur = cmd.eur
+        th = Threshold(pct=tracking.threshold_pct, eur=tracking.threshold_eur)
+        await self._out.send_text(user.wa_id, f"✅ *{tracking.label}*: avviso se il trend cambia di almeno "
+                                              f"*{th.describe()}*.")

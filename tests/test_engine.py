@@ -174,7 +174,7 @@ async def test_text_search_not_found(make):
 async def test_help(make):
     engine, out, _ = make(FakeVision())
     await engine.handle(Incoming(WA, "text", text="aiuto"))
-    assert "Comandi" in out.last[1]
+    assert "Carte che segui" in out.last[1] and "stop 2" in out.last[1]
 
 
 async def test_notify_yes_creates_tracking_with_shown_price_as_baseline(make):
@@ -217,3 +217,85 @@ async def test_korean_only_does_not_offer_notifications(make):
     engine, out, sessions = make(FakeVision())
     await engine.handle(Incoming(WA, "text", text="MEW 006 kor"))
     assert out.last[0] == "text" and stage(sessions) == "idle"
+
+
+async def _track(engine, text):
+    await engine.handle(Incoming(WA, "text", text=text))
+    await engine.handle(Incoming(WA, "text", text="sì"))
+
+
+async def test_list_stop_and_numbering(make):
+    engine, out, sessions = make(FakeVision())
+    await engine.handle(Incoming(WA, "text", text="lista"))
+    assert "Non segui ancora" in out.last[1]
+    await _track(engine, "MEW 006 ita jap")
+    await _track(engine, "MEW 001 reverse ita")
+    await engine.handle(Incoming(WA, "text", text="lista"))
+    listing = out.last[1]
+    assert "1)* Charizard ex" in listing and "2)* Bulbasaur" in listing
+    assert "8,13 €" in listing and "Soglia: 10% e 1,00 €" in listing
+
+    await engine.handle(Incoming(WA, "text", text="stop 1"))
+    assert "Non seguo più *Charizard ex" in out.last[1] and "1)* Bulbasaur" in out.last[1]
+    await engine.handle(Incoming(WA, "text", text="stop 5"))
+    assert "da 1 a 1" in out.last[1]
+    await engine.handle(Incoming(WA, "text", text="stop tutte"))
+    with sessions() as s:
+        assert s.query(Tracking).filter_by(active=True).count() == 0
+
+
+async def test_change_langs_keeps_existing_baseline(make):
+    engine, out, sessions = make(FakeVision())
+    await _track(engine, "MEW 006 ita")
+    with sessions() as s:
+        s.query(Tracking).one().targets[0].baseline = 7.0  # come se fosse già stato notificato
+        s.commit()
+    await engine.handle(Incoming(WA, "text", text="lingue 1 ita jap kor"))
+    assert "ora seguo 🇮🇹 ITA · 🇯🇵 JAP" in out.last[1] and "KOR" in out.last[1]
+    with sessions() as s:
+        targets = {t.langs: t for t in s.query(Tracking).one().targets if t.active}
+        assert targets["it"].baseline == 7.0 and targets["ja"].baseline == 3.36
+    # Con una sola carta il numero si può omettere.
+    await engine.handle(Incoming(WA, "text", text="lingue jap"))
+    with sessions() as s:
+        assert [t.langs for t in s.query(Tracking).one().targets if t.active] == ["ja"]
+
+
+async def test_langs_only_untrackable_is_refused(make):
+    engine, out, sessions = make(FakeVision())
+    await _track(engine, "MEW 006 ita")
+    await engine.handle(Incoming(WA, "text", text="lingue 1 kor"))
+    assert "non modificate" in out.last[1]
+    with sessions() as s:
+        assert s.query(Tracking).one().langs == "it"
+
+
+async def test_thresholds_global_and_per_card(make):
+    engine, out, sessions = make(FakeVision())
+    await _track(engine, "MEW 006 ita")
+    await _track(engine, "MEW 001 reverse ita")
+
+    await engine.handle(Incoming(WA, "text", text="soglia 2 25%"))
+    assert "25% e 1,00 €" in out.last[1]
+    await engine.handle(Incoming(WA, "text", text="soglia 15% 0€"))
+    assert "Soglia generale" in out.last[1] and "*15%*" in out.last[1] and "1 carta ha una soglia" in out.last[1]
+    await engine.handle(Incoming(WA, "text", text="lista"))
+    assert "Soglia: 15%\n" in out.last[1] + "\n" and "25% e 1,00 € _(propria)_" in out.last[1]
+
+    await engine.handle(Incoming(WA, "text", text="soglia 2 predefinita"))
+    with sessions() as s:
+        user = s.query(Tracking).first().user
+        assert (user.threshold_pct, user.threshold_eur) == (15.0, None)
+        assert not any(t.threshold_custom for t in s.query(Tracking).all())
+    await engine.handle(Incoming(WA, "text", text="soglia"))
+    assert "*15%*" in out.last[1]
+
+
+async def test_command_works_in_the_middle_of_a_search(make):
+    engine, out, sessions = make(FakeVision())
+    await engine.handle(Incoming(WA, "text", text="MEW 006"))
+    assert stage(sessions) == "awaiting_langs"
+    await engine.handle(Incoming(WA, "text", text="lista"))
+    assert "Non segui ancora" in out.last[1]
+    await engine.handle(Incoming(WA, "text", text="lingue ita, jap"))  # vale come risposta alla domanda
+    assert "JAP" in out.all and stage(sessions) == "awaiting_notify"

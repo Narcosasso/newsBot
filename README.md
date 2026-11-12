@@ -4,7 +4,7 @@ Bot WhatsApp personale: invii la foto di una carta Pokémon, il bot la riconosce
 e risponde con i prezzi per le lingue che scegli (es. *ita, eng, jap*).
 In alternativa scrivi codice set e numero (es. *MEW 006*): gratis, senza foto.
 
-**Stato:** riconoscimento, prezzi per lingua, tracking e notifiche. Prossimi: comandi di gestione e deploy.
+**Stato:** riconoscimento, prezzi per lingua, tracking, notifiche e comandi. Prossimo: deploy.
 
 ## Cosa dicono davvero i prezzi
 
@@ -44,6 +44,22 @@ automatiche: per questo il bot non legge le inserzioni per lingua.
 4. **Prezzi** per lingua, con andamento (trend rispetto alle medie a 7 e 30 giorni), fonte e data di aggiornamento.
 5. **Notifiche**: il bot chiede "Vuoi una notifica quando il prezzo cambia?". Se rispondi sì salva la carta,
    la variante e le lingue, con il prezzo appena mostrato come valore di riferimento.
+
+## Comandi in chat
+
+| Comando | Cosa fa |
+|---|---|
+| `lista` | carte seguite, numerate, con prezzo di riferimento e soglia |
+| `stop 2` · `stop tutte` | smetti di seguire la carta 2, oppure tutte |
+| `lingue 2 ita, jap` | cambia le lingue della carta 2; con una sola carta il numero si può omettere |
+| `soglia` | mostra la soglia generale |
+| `soglia 15%` · `soglia 2€` · `soglia 15% 2€` | cambia la soglia generale; `0%` o `0€` disattiva quella condizione |
+| `soglia 2 20%` · `soglia 2 predefinita` | soglia solo per la carta 2, oppure ritorno a quella generale |
+| `lingue` · `annulla` · `aiuto` | lingue supportate · interrompe la ricerca · guida |
+
+I comandi funzionano anche a metà di una ricerca. I numeri sono quelli di `lista`: dopo uno `stop` il bot
+rimanda la lista aggiornata. Cambiare lingue mantiene il riferimento delle lingue già seguite; le nuove partono
+dal prezzo attuale.
 
 ## Notifiche
 
@@ -209,5 +225,4 @@ cardbot/
 
 ## Prossime fasi
 
-- **Comandi**: lista, stop, modifica lingue, soglia (default ±10% e almeno 1 €).
 - **Deploy**: Cloud Run (webhook) + Cloud Scheduler (job) + Neon (Postgres), segreti da Secret Manager.

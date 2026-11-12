@@ -74,15 +74,38 @@ def format_quotes(title: str, variant: str, quotes: list[LangQuote], tz: str = "
     return "\n".join(lines).strip()
 
 
+def format_tracking_list(trackings, user) -> str:
+    from cardbot.alerts.rules import effective_threshold
+
+    lines = ["📋 *Carte che segui*", ""]
+    for i, t in enumerate(trackings, 1):
+        lines.append(f"*{i})* {t.label} · {LABELS_IT.get(t.variant, t.variant)}")
+        prices = [f"{' · '.join(label(x) for x in target.langs.split(','))} {money(target.baseline)}"
+                  for target in t.targets if target.active]
+        if prices:
+            lines.append("   " + " | ".join(prices) + "  _(riferimento)_")
+        th = effective_threshold(user, t)
+        lines.append(f"   Soglia: {th.describe()}" + (" _(propria)_" if t.threshold_custom else ""))
+    lines += ["", "_stop 1 · lingue 1 ita, jap · soglia 1 20% · soglia 15% (generale)_"]
+    return "\n".join(lines)
+
+
 HELP = """*Come cercare una carta*
 • 📸 Invia la *foto* della carta. Nella didascalia puoi già scrivere le lingue, es. _ita, eng, jap_
 • ⌨️ Oppure scrivi *codice set e numero* stampati in basso sulla carta (gratis, nessuna foto):
    _MEW 006_ · _PAL 123/193_ · _SV2a 006/165_ (giapponese)
    Puoi aggiungere nome, lingue e variante: _Charizard ex MEW 006 reverse ita jap_
+Dopo i prezzi ti chiedo se vuoi le notifiche quando cambiano.
 
-*Comandi*
+*Carte che segui*
+• *lista* – elenco numerato con prezzi di riferimento e soglie
+• *stop 2* – smetti di seguire la carta 2 · *stop tutte*
+• *lingue 2 ita, jap* – cambia le lingue della carta 2
+• *soglia* – mostra la soglia di notifica (predefinita: 10% e 1 €, entrambe)
+• *soglia 15%* · *soglia 2€* · *soglia 15% 2€* – soglia generale (0 disattiva una condizione)
+• *soglia 2 20%* – soglia solo per la carta 2 · *soglia 2 predefinita* per tornare a quella generale
+
+*Altro*
 • *lingue* – lingue supportate
 • *annulla* – interrompe la ricerca in corso
-• *aiuto* – questo messaggio
-
-_Tracking e notifiche arrivano nella prossima fase._"""
+• *aiuto* – questo messaggio"""
