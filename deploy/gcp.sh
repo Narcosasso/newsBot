@@ -48,7 +48,16 @@ cmd_setup() {
   # Il servizio e il job leggono i segreti; nient'altro.
   gc projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${RUNTIME_SA}" \
     --role roles/secretmanager.secretAccessor --condition None >/dev/null
-  echo "Setup completato."
+  # Nei progetti nuovi l'account che esegue le build ("run deploy --source") non riceve più i permessi in
+  # automatico: gli diamo il ruolo Cloud Run Builder e l'uso dei servizi del progetto.
+  local number build_sa
+  number="$(gc projects describe "$PROJECT_ID" --format 'value(projectNumber)')"
+  build_sa="${number}-compute@developer.gserviceaccount.com"
+  for role in roles/run.builder roles/serviceusage.serviceUsageConsumer; do
+    gc projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${build_sa}" \
+      --role "$role" --condition None >/dev/null
+  done
+  echo "Setup completato (i permessi nuovi possono impiegare qualche minuto ad attivarsi)."
 }
 
 cmd_secrets() {
