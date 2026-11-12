@@ -8,9 +8,11 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from cardbot.alerts.rules import effective_threshold
+from cardbot.alerts.tracking import target_specs, upsert_tracking
 from cardbot.bot.format import HELP, format_quotes
-from cardbot.db import get_or_create_user, load_state, save_state
-from cardbot.langs import format_langs, parse_langs, supported_help
+from cardbot.db import get_or_create_user, load_state, save_state, utcnow
+from cardbot.langs import format_langs, label, parse_langs, supported_help
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import Candidate, CardMatcher, MatchResult
 from cardbot.recognition.text_query import TextQuery, parse_query
@@ -21,6 +23,8 @@ log = logging.getLogger(__name__)
 
 BAD_PHOTO_TIPS = ("Prova con una foto più nitida: carta dritta, ben illuminata, senza riflessi, "
                   "con nome e numero in basso leggibili.")
+YES = {"notify:yes", "si", "sì", "si avvisami", "sì, avvisami", "ok", "yes"}
+NO = {"notify:no", "no", "no grazie", "no, grazie"}
 TEXT_TIP = ("Puoi anche scrivere codice set e numero stampati in basso sulla carta, es. *MEW 006*, "
             "*SV2a 006/165* oppure *Charizard ex 006/165*.")
 
@@ -54,6 +58,7 @@ class Engine:
     async def handle(self, msg: Incoming) -> None:
         with self._sessions() as session:
             user = get_or_create_user(session, msg.wa_id)
+            user.last_inbound_at = utcnow()  # apre (o rinnova) la finestra di servizio di 24 ore
             state = load_state(session, user)
             try:
                 await self._dispatch(session, user, state, msg)
@@ -85,6 +90,8 @@ class Engine:
             await self._on_variant_reply(user, state, lowered)
         elif state.stage == "awaiting_langs":
             await self._on_langs_reply(user, state, reply)
+        elif state.stage == "awaiting_notify" and lowered in YES | NO:
+            await self._on_notify_reply(session, user, state, lowered)
         elif lowered in {"aiuto", "help", "?", "ciao", "start"}:
             await self._out.send_text(user.wa_id, HELP)
         elif lowered == "lingue":
@@ -224,4 +231,32 @@ class Engine:
         text = format_quotes(cand.short(), variant, quotes, tz=self._tz, warnings=payload.get("warnings"))
         await self._out.send_text(user.wa_id, text)
         user.langs = ",".join(langs)
-        save_state(state, "idle", {"last_card": payload["selected"], "variant": variant, "langs": langs})
+        specs = target_specs(quotes)
+        next_payload = {"selected": payload["selected"], "variant": variant, "langs": langs, "targets": specs}
+        if not specs:
+            save_state(state, "idle", next_payload)
+            return
+        save_state(state, "awaiting_notify", next_payload)
+        await self._out.send_buttons(user.wa_id, "🔔 Vuoi una notifica quando il prezzo cambia?",
+                                     [("notify:yes", "Sì, avvisami"), ("notify:no", "No, grazie")])
+
+    async def _on_notify_reply(self, session, user, state, reply: str) -> None:
+        payload = dict(state.payload)
+        save_state(state, "idle", payload)
+        if reply in NO:
+            await self._out.send_text(user.wa_id, "Ok, niente notifiche per questa carta.")
+            return
+        cand = Candidate(**payload["selected"])
+        result = upsert_tracking(session, user, card_id=cand.card_id, catalog_lang=cand.catalog_lang,
+                                 variant=payload["variant"], label=cand.short(), langs=payload["langs"],
+                                 specs=payload["targets"])
+        th = effective_threshold(user, result.tracking)
+        langs = " · ".join(label(x) for x in result.tracked_langs)
+        lines = [f"✅ {'Ti avviserò' if result.created else 'Aggiornato: ti avviserò'} quando il trend Cardmarket "
+                 f"di *{cand.short()}* ({LABELS_IT[payload['variant']]}) cambia di almeno {th.describe()}.",
+                 f"Lingue: {langs}"]
+        if result.untracked_langs:
+            lines.append("Non tracciabili (nessun prezzo): "
+                         + ", ".join(label(x) for x in result.untracked_langs))
+        lines.append("_Controllo i prezzi una volta al giorno, quando Cardmarket li aggiorna._")
+        await self._out.send_text(user.wa_id, "\n".join(lines))

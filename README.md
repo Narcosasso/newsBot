@@ -4,7 +4,7 @@ Bot WhatsApp personale: invii la foto di una carta Pokémon, il bot la riconosce
 e risponde con i prezzi per le lingue che scegli (es. *ita, eng, jap*).
 In alternativa scrivi codice set e numero (es. *MEW 006*): gratis, senza foto.
 
-**Stato:** fase MVP (foto → riconoscimento → prezzi per lingua). Tracking e notifiche arrivano nella prossima fase.
+**Stato:** riconoscimento, prezzi per lingua, tracking e notifiche. Prossimi: comandi di gestione e deploy.
 
 ## Cosa dicono davvero i prezzi
 
@@ -42,6 +42,53 @@ automatiche: per questo il bot non legge le inserzioni per lingua.
    2-3 candidati con i bottoni; se la variante (normale / holo / reverse) non si capisce dalla foto, la chiede.
 3. **Lingue**: le chiede (o le leggi dalla didascalia della foto) e ricorda le ultime usate.
 4. **Prezzi** per lingua, con andamento (trend rispetto alle medie a 7 e 30 giorni), fonte e data di aggiornamento.
+5. **Notifiche**: il bot chiede "Vuoi una notifica quando il prezzo cambia?". Se rispondi sì salva la carta,
+   la variante e le lingue, con il prezzo appena mostrato come valore di riferimento.
+
+## Notifiche
+
+- **Cosa si sorveglia:** il *trend* Cardmarket di ogni gruppo di lingue (ITA/ENG/… insieme, JAP a parte).
+  KOR e CIN non hanno prezzi, quindi non sono tracciabili.
+- **Quando scatta:** se il trend cambia di almeno **10% e almeno 1 €** rispetto all'**ultimo valore notificato**.
+  Vanno superate entrambe le soglie, così una carta da 0,50 € non avvisa per +0,10 €. Il confronto è con
+  l'ultimo valore notificato e non con il giorno prima, così una salita lenta ma continua prima o poi avvisa.
+- **Mai doppioni:** uno snapshot per versione del price guide, una notifica per (prezzo, snapshot) con vincolo
+  UNIQUE, il riferimento si aggiorna nella stessa transazione. L'invio è "al massimo una volta": un invio
+  interrotto a metà non viene ripetuto, mentre un errore esplicito di WhatsApp viene ritentato al giro dopo.
+- **Un messaggio per giro:** tutte le variazioni di un utente arrivano insieme.
+- **Oltre le 24 ore:** se non scrivi al bot da più di 24 ore, WhatsApp accetta solo un template approvato
+  (vedi sotto). Entro le 24 ore il bot manda un messaggio normale e gratuito.
+
+### Job giornaliero
+
+```bash
+python -m cardbot.jobs.poll --dry-run
+```
+
+```bash
+python -m cardbot.jobs.poll
+```
+
+- Scarica il [price guide Cardmarket](https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json)
+  (circa 15 MB, rigenerato verso le 02:50 ora italiana) **con richiesta condizionale**: se il file non è cambiato
+  il server risponde 304 e non si scarica nulla. È una sola richiesta al giorno, qualunque sia il numero di carte
+  tracciate.
+- Se il file non è raggiungibile ripiega su TCGdex (una richiesta per carta, con limite al secondo).
+- Va schedulato **una volta al giorno, verso le 04:00 ora italiana**. Lanciarlo più spesso non crea doppioni.
+- `--dry-run` mostra cosa notificherebbe senza salvare né inviare; `--force` rielabora anche un file già visto.
+
+### Template WhatsApp per le notifiche
+
+In [WhatsApp Manager](https://business.facebook.com/wa/manage/message-templates/) → *Message templates* →
+*Create template*:
+
+- **Categoria:** Utility · **Nome:** `price_alert` · **Lingua:** Italiano (`it`)
+- **Corpo:**
+  `Ciao! {{1}} variazioni di prezzo sulle carte Pokémon che segui: {{2}}. Scrivi al bot per vedere i prezzi aggiornati.`
+- **Esempi:** `{{1}}` = `1`, `{{2}}` = `Charizard ex · 151 006/165 (Holo) — ITA: 8,13 € → 9,50 € +16,9%`
+
+L'approvazione di solito arriva in pochi minuti. Nome e lingua si configurano con `WHATSAPP_ALERT_TEMPLATE` e
+`WHATSAPP_TEMPLATE_LANG`. Per inviare template serve un metodo di pagamento in WhatsApp Manager.
 
 ## Avvio in locale
 
@@ -149,6 +196,11 @@ cardbot/
 ├── recognition/matcher.py # match foto/testo -> carta, punteggio e candidati
 ├── recognition/text_query.py # parsing di "MEW 006 reverse ita jap"
 ├── prices/                # quotazioni per lingua e scelta dei campi per variante
+├── alerts/rules.py        # soglie e confronto (logica pura)
+├── alerts/tracking.py     # carte seguite e prezzi sorvegliati
+├── alerts/outbox.py       # snapshot, notifiche idempotenti, invio a digest (testo o template)
+├── alerts/sources.py      # price guide Cardmarket (ETag) e fallback TCGdex
+├── jobs/poll.py           # job giornaliero
 ├── whatsapp/              # client Cloud API e parsing dei webhook
 ├── langs.py               # parsing "ita, eng, jap"
 ├── db.py                  # SQLAlchemy (SQLite in locale, Postgres in produzione)
@@ -157,8 +209,5 @@ cardbot/
 
 ## Prossime fasi
 
-- **Tracking e notifiche**: "vuoi le notifiche?", job giornaliero sul price guide Cardmarket (un solo download
-  al giorno, solo dopo che la fonte si è aggiornata), confronto con l'ultimo valore notificato, outbox
-  idempotente, template utility.
 - **Comandi**: lista, stop, modifica lingue, soglia (default ±10% e almeno 1 €).
 - **Deploy**: Cloud Run (webhook) + Cloud Scheduler (job) + Neon (Postgres), segreti da Secret Manager.

@@ -60,6 +60,8 @@ class LangQuote:
     aggregated: bool = False       # True: prezzo Cardmarket unico per più lingue
     estimated_equivalent: bool = False
     notes: list[str] = field(default_factory=list)
+    catalog_lang: str | None = None  # catalogo TCGdex della carta da cui viene il prezzo
+    shared_product: bool = True      # la variante condivide il prodotto Cardmarket (serve per rileggere i campi)
 
 
 def _f(value: Any) -> float | None:

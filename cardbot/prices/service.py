@@ -34,13 +34,15 @@ def card_label(card: dict[str, Any]) -> str:
     return f"{card.get('name', '')} · {s.get('name', s.get('id', ''))} {num}".strip()
 
 
-def quote_card(card: dict[str, Any], variant: str, langs: list[str], with_tcgplayer: bool) -> LangQuote:
+def quote_card(card: dict[str, Any], variant: str, langs: list[str], with_tcgplayer: bool,
+               catalog_lang: str) -> LangQuote:
     entry = variant_entry(card, variant)
     pricing = (entry or {}).get("pricing") or card.get("pricing") or {}
-    cm = cardmarket_quote(pricing.get("cardmarket"), variant, _shared_product(card, entry))
+    shared = _shared_product(card, entry)
+    cm = cardmarket_quote(pricing.get("cardmarket"), variant, shared)
     tp = tcgplayer_quote(pricing.get("tcgplayer"), variant) if with_tcgplayer else None
     return LangQuote(langs=langs, card_id=card.get("id"), card_label=card_label(card), cardmarket=cm,
-                     tcgplayer=tp)
+                     tcgplayer=tp, catalog_lang=catalog_lang, shared_product=shared)
 
 
 class PriceService:
@@ -64,21 +66,22 @@ class PriceService:
                 out.append(LangQuote(langs=intl_langs, card_id=None, card_label=None,
                                      notes=["Equivalente internazionale non trovato nel catalogo."]))
             else:
-                q = quote_card(intl_card, variant, intl_langs, with_tcgplayer="en" in intl_langs)
+                q = quote_card(intl_card, variant, intl_langs, with_tcgplayer="en" in intl_langs,
+                               catalog_lang="en" if is_asian else catalog_lang)
                 q.aggregated = True
                 q.estimated_equivalent = estimated
                 out.append(q)
 
         if "ja" in langs:
             if catalog_lang == "ja":
-                out.append(quote_card(card, variant, ["ja"], with_tcgplayer=False))
+                out.append(quote_card(card, variant, ["ja"], with_tcgplayer=False, catalog_lang="ja"))
             else:
                 jp_card, estimated = await self.find_equivalent(card, "ja")
                 if jp_card is None:
                     out.append(LangQuote(langs=["ja"], card_id=None, card_label=None,
                                          notes=["Equivalente giapponese non trovato nel catalogo."]))
                 else:
-                    q = quote_card(jp_card, variant, ["ja"], with_tcgplayer=False)
+                    q = quote_card(jp_card, variant, ["ja"], with_tcgplayer=False, catalog_lang="ja")
                     q.estimated_equivalent = estimated
                     out.append(q)
 

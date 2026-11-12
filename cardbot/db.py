@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, create_engine
+from sqlalchemy import (
+    JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine,
+)
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 
@@ -20,13 +23,122 @@ class Base(DeclarativeBase):
     pass
 
 
+DEFAULT_THRESHOLD_PCT = 10.0
+DEFAULT_THRESHOLD_EUR = 1.0
+
+
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     wa_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     langs: Mapped[str | None] = mapped_column(String(64))  # ultime lingue usate, es. "it,en,ja"
+    # Soglia di notifica predefinita: avvisa se la variazione supera ENTRAMBE (None = condizione disattivata).
+    threshold_pct: Mapped[float | None] = mapped_column(Float, default=DEFAULT_THRESHOLD_PCT)
+    threshold_eur: Mapped[float | None] = mapped_column(Float, default=DEFAULT_THRESHOLD_EUR)
+    # Ultimo messaggio ricevuto: entro 24 ore si può rispondere con testo libero, dopo serve un template.
+    last_inbound_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    trackings: Mapped[list[Tracking]] = relationship(back_populates="user")
+
+
+class Tracking(Base):
+    """Una carta seguita da un utente, in una variante, per alcune lingue."""
+
+    __tablename__ = "trackings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    card_id: Mapped[str] = mapped_column(String(64))          # id TCGdex, es. sv03.5-006
+    catalog_lang: Mapped[str] = mapped_column(String(8))
+    variant: Mapped[str] = mapped_column(String(16))
+    label: Mapped[str] = mapped_column(String(200))
+    langs: Mapped[str] = mapped_column(String(64))            # es. "it,en,ja"
+    # Soglia della singola carta, usata solo se threshold_custom è True (altrimenti vale quella dell'utente).
+    threshold_custom: Mapped[bool] = mapped_column(Boolean, default=False)
+    threshold_pct: Mapped[float | None] = mapped_column(Float)
+    threshold_eur: Mapped[float | None] = mapped_column(Float)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="trackings")
+    targets: Mapped[list[TrackingTarget]] = relationship(back_populates="tracking")
+
+
+class TrackingTarget(Base):
+    """Un prezzo da sorvegliare: un prodotto Cardmarket per un gruppo di lingue (es. ITA+ENG, oppure JAP)."""
+
+    __tablename__ = "tracking_targets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tracking_id: Mapped[int] = mapped_column(ForeignKey("trackings.id"), index=True)
+    langs: Mapped[str] = mapped_column(String(64))
+    card_id: Mapped[str] = mapped_column(String(64))           # carta da cui viene il prezzo (può essere l'equivalente JP)
+    catalog_lang: Mapped[str] = mapped_column(String(8))
+    id_product: Mapped[int] = mapped_column(Integer, index=True)
+    variant: Mapped[str] = mapped_column(String(16))
+    shared_product: Mapped[bool] = mapped_column(Boolean, default=True)
+    aggregated: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Valore di riferimento: l'ultimo notificato (all'inizio, quello mostrato quando hai attivato le notifiche).
+    baseline: Mapped[float | None] = mapped_column(Float)
+    baseline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    tracking: Mapped[Tracking] = relationship(back_populates="targets")
+
+
+class PriceSnapshot(Base):
+    """Prezzo di una serie (prodotto + insieme di campi) in una data versione della fonte."""
+
+    __tablename__ = "price_snapshots"
+    __table_args__ = (UniqueConstraint("series", "source_version", name="uq_snapshot_series_version"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    series: Mapped[str] = mapped_column(String(64), index=True)   # es. "cm:733596:reverse:shared"
+    source: Mapped[str] = mapped_column(String(32))
+    source_version: Mapped[str] = mapped_column(String(64))       # createdAt del price guide
+    source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    low: Mapped[float | None] = mapped_column(Float)
+    trend: Mapped[float | None] = mapped_column(Float)
+    avg: Mapped[float | None] = mapped_column(Float)
+    avg7: Mapped[float | None] = mapped_column(Float)
+    avg30: Mapped[float | None] = mapped_column(Float)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Notification(Base):
+    """Outbox delle notifiche. Una sola riga per (target, snapshot): la stessa variazione non si notifica due volte.
+
+    Stati: pending -> sending -> sent | failed. Una riga rimasta in "sending" (crash durante l'invio) non viene
+    reinviata automaticamente: meglio perdere un avviso che mandarlo due volte.
+    """
+
+    __tablename__ = "notifications"
+    __table_args__ = (UniqueConstraint("target_id", "snapshot_id", name="uq_notification_target_snapshot"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    target_id: Mapped[int] = mapped_column(ForeignKey("tracking_targets.id"))
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("price_snapshots.id"))
+    old_value: Mapped[float] = mapped_column(Float)
+    new_value: Mapped[float] = mapped_column(Float)
+    text: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    wamid: Mapped[str | None] = mapped_column(String(128))
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class JobState(Base):
+    """Stato persistente dei job (es. ETag e versione dell'ultimo price guide elaborato)."""
+
+    __tablename__ = "job_state"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
 class InboundMessage(Base):

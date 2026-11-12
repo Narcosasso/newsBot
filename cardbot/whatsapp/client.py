@@ -39,9 +39,24 @@ class WhatsAppClient:
         messages = resp.json().get("messages") or [{}]
         return messages[0].get("id")  # wamid, utile per l'idempotenza delle notifiche
 
-    async def send_text(self, to: str, text: str) -> None:
+    async def send_text(self, to: str, text: str) -> str | None:
+        wamid = None
         for chunk in _chunks(text, MAX_TEXT):
-            await self._post_message({"to": to, "type": "text", "text": {"body": chunk, "preview_url": False}})
+            wamid = await self._post_message({"to": to, "type": "text",
+                                              "text": {"body": chunk, "preview_url": False}})
+        return wamid
+
+    async def send_template(self, to: str, name: str, lang: str, params: list[str]) -> str | None:
+        """Messaggio template approvato da Meta: l'unico modo di scrivere oltre la finestra di 24 ore."""
+        return await self._post_message({
+            "to": to,
+            "type": "template",
+            "template": {
+                "name": name,
+                "language": {"code": lang},
+                "components": [{"type": "body", "parameters": [{"type": "text", "text": p} for p in params]}],
+            },
+        })
 
     async def send_buttons(self, to: str, body: str, buttons: list[tuple[str, str]]) -> None:
         if not buttons:

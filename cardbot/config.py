@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     whatsapp_api_version: str = "v24.0"
     # Numeri autorizzati (formato wa_id, es. 393331234567), separati da virgola. Vuoto = nessun filtro.
     allowed_wa_ids: str = ""
+    # Template "utility" approvato per le notifiche oltre la finestra di 24 ore (vedi README).
+    whatsapp_alert_template: str = "price_alert"
+    whatsapp_template_lang: str = "it"
 
     # --- Claude (riconoscimento foto) ---
     anthropic_api_key: str = ""
@@ -26,6 +29,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./cardbot.db"
     tcgdex_base_url: str = "https://api.tcgdex.net/v2"
     tcgdex_max_rps: float = 5.0
+    cardmarket_price_guide_url: str = (
+        "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
+    )
 
     # --- Bot ---
     default_langs: str = "ita,eng"
