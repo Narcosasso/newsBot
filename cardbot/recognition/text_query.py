@@ -2,7 +2,7 @@
 
 Regole (in ordine di priorità per ogni parola):
 - "006/165" o "TG05/TG30": numero e totale del set
-- solo cifre ("006", "6"): numero
+- solo cifre ("006", "6"): numero (cifre+lettere come "30C" sono un codice set)
 - lingua ("ita", "jap", …): lingue per cui mostrare i prezzi
 - variante ("reverse", "holo", "normale")
 - lettere+cifre ("SV2a", "S12a", "sv03.5", "TG05"): codice set se non c'è ancora, altrimenti numero
@@ -20,7 +20,8 @@ from cardbot.langs import parse_langs
 VARIANT_WORDS = {"reverse": "reverse", "rev": "reverse", "holo": "holo", "olografica": "holo",
                  "normale": "normal", "normal": "normal"}
 _SLASH = re.compile(r"^([A-Za-z]{0,3}\d{1,3}[A-Za-z]?)/([A-Za-z]{0,3}\d{1,3})$")
-_DIGITS = re.compile(r"^\d{1,3}[A-Za-z]?$")
+# Solo cifre: "30C" è un codice set (30th Celebration), non il numero 30 con una lettera.
+_DIGITS = re.compile(r"^\d{1,3}$")
 _MIXED = re.compile(r"^(?=.*\d)(?=.*[A-Za-z])[A-Za-z0-9.\-]{2,8}$")
 _UPPER = re.compile(r"^[A-Z]{2,5}$")
 

@@ -13,6 +13,9 @@ from cardbot.recognition.text_query import parse_query
     ("Charizard ex MEW 006", "MEW", "006", None, "Charizard ex"),
     ("Charizard ex 006/165", None, "006", "165", "Charizard ex"),
     ("PAL TG05", "PAL", "TG05", None, None),
+    ("30C 154", "30C", "154", None, None),            # 30th Celebration: codice con cifre e lettera
+    ("30C 154/128", "30C", "154", "128", None),
+    ("Gengar ex 30C 154", "30C", "154", None, "Gengar ex"),
     ("Pikachu", None, None, None, "Pikachu"),
 ])
 def test_parse_query(text, code, number, total, name):
