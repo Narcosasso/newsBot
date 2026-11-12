@@ -324,6 +324,37 @@ Lo script, rilanciabile:
 In *WhatsApp → Configuration → Webhook* sostituisci il Callback URL (quello del tunnel locale) con l'URL stampato,
 stesso verify token, *Verify and save*, campo **messages** sottoscritto. Poi scrivi *aiuto* al bot.
 
+### Se il bot non risponde
+
+Leggi i log del webhook:
+
+```bash
+gcloud run services logs read cardbot --region europe-west1 --limit 30
+```
+
+- **Nessun `POST /webhook`** quando gli scrivi: l'account WhatsApp non è iscritto alla tua app (succede col
+  numero di prova). Iscrivila usando il token permanente del `.env`; `WABA_ID` è l'*ID dell'account di
+  messaggistica* mostrato nella pagina di prova su Meta. Il primo comando legge il token, il secondo controlla
+  le app iscritte, il terzo iscrive la tua.
+
+```bash
+TOKEN=$(grep '^WHATSAPP_TOKEN=' .env | cut -d= -f2-)
+```
+
+```bash
+curl -s "https://graph.facebook.com/v25.0/WABA_ID/subscribed_apps" -H "Authorization: Bearer $TOKEN"; echo
+```
+
+```bash
+curl -s -X POST "https://graph.facebook.com/v25.0/WABA_ID/subscribed_apps" -H "Authorization: Bearer $TOKEN"; echo
+```
+
+- **`POST /webhook` con 403**: `WHATSAPP_APP_SECRET` non corrisponde all'App secret dell'app.
+- **`Messaggio ignorato: il mittente non è in ALLOWED_WA_IDS`**: correggi il numero (prefisso senza `+`).
+- **`WhatsApp send error`**: il token permanente non ha i permessi o l'account WhatsApp non è assegnato
+  all'utente di sistema.
+- `/healthz` su Cloud Run dà un 404 di Google: è un percorso riservato. Usa `/health`.
+
 ### Operazioni utili
 
 Eseguire subito il controllo prezzi:

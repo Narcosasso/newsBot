@@ -19,6 +19,8 @@ from cardbot.whatsapp.client import WhatsAppClient
 from cardbot.whatsapp.webhook import InboundEvent, parse_events, verify_signature
 
 log = logging.getLogger("cardbot")
+# Su Cloud Run si legge solo ciò che finisce sullo standard output: mostriamo anche i messaggi INFO del bot.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 
 @dataclass
@@ -86,7 +88,7 @@ def create_app(container: Container | None = None) -> FastAPI:
         allowed = c.settings.allowed_wa_id_set
         for ev in parse_events(await request.json()):
             if allowed and ev.wa_id not in allowed:
-                log.info("Messaggio ignorato da numero non autorizzato")
+                log.warning("Messaggio ignorato: il mittente non è in ALLOWED_WA_IDS")
                 continue
             if ev.kind == "other":
                 continue
