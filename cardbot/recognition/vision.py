@@ -85,6 +85,8 @@ class VisionError(RuntimeError):
 
 
 class CardVision:
+    enabled = True
+
     def __init__(self, api_key: str, model: str = "claude-opus-5-5", effort: str = "medium",
                  client: anthropic.AsyncAnthropic | None = None) -> None:
         self._client = client or anthropic.AsyncAnthropic(api_key=api_key or None)
@@ -122,9 +124,11 @@ class CardVision:
 class DisabledVision:
     """Usata quando ANTHROPIC_API_KEY non è configurata: il bot funziona solo con la ricerca testuale."""
 
+    enabled = False
+
     async def read_card(self, image: bytes, media_type: str = "image/jpeg") -> VisionResult:
-        raise VisionError("Il riconoscimento delle foto non è attivo. Scrivi codice set e numero stampati in "
-                          "basso sulla carta, es. *MEW 006* o *SV2a 006/165*")
+        raise VisionError("Le foto per ora non sono attive. Scrivimi codice e numero stampati in basso a "
+                          "sinistra sulla carta, es. *MEW 006* o *30C 154*")
 
 
 def make_vision(api_key: str, model: str, effort: str) -> CardVision | DisabledVision:

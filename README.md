@@ -50,14 +50,15 @@ automatiche: per questo il bot non legge le inserzioni per lingua.
 | Comando | Cosa fa |
 |---|---|
 | `lista` | carte seguite, numerate, con prezzo di riferimento e soglia |
+| `novità` | come si sono mossi i prezzi delle carte seguite: dal giorno prima, in 7 giorni e dal tuo riferimento |
 | `stop 2` · `stop tutte` | smetti di seguire la carta 2, oppure tutte |
 | `lingue 2 ita, jap` | cambia le lingue della carta 2; con una sola carta il numero si può omettere |
 | `soglia` | mostra la soglia generale |
 | `soglia 15%` · `soglia 2€` · `soglia 15% 2€` | cambia la soglia generale; `0%` o `0€` disattiva quella condizione |
 | `soglia 2 20%` · `soglia 2 predefinita` | soglia solo per la carta 2, oppure ritorno a quella generale |
-| `lingue` · `annulla` · `aiuto` | lingue supportate · interrompe la ricerca · guida |
+| `comandi` (o `/comandi`, `aiuto`, `menu`) · `lingue` · `annulla` | guida · lingue supportate · ricomincia |
 
-I comandi funzionano anche a metà di una ricerca. I numeri sono quelli di `lista`: dopo uno `stop` il bot
+Al primo messaggio il bot si presenta e manda la lista dei comandi. Lo `/` iniziale è facoltativo per tutti i comandi. I comandi funzionano anche a metà di una ricerca. I numeri sono quelli di `lista`: dopo uno `stop` il bot
 rimanda la lista aggiornata. Cambiare lingue mantiene il riferimento delle lingue già seguite; le nuove partono
 dal prezzo attuale.
 

@@ -189,13 +189,15 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(engine, expire_on_commit=False)
 
 
-def get_or_create_user(session: Session, wa_id: str) -> User:
+def get_or_create_user(session: Session, wa_id: str) -> tuple[User, bool]:
+    """(utente, creato_ora): il secondo valore serve a dare il benvenuto al primo messaggio."""
     user = session.query(User).filter_by(wa_id=wa_id).one_or_none()
-    if user is None:
-        user = User(wa_id=wa_id)
-        session.add(user)
-        session.flush()
-    return user
+    if user is not None:
+        return user, False
+    user = User(wa_id=wa_id)
+    session.add(user)
+    session.flush()
+    return user, True
 
 
 def claim_inbound(session_factory: sessionmaker[Session], message_id: str, wa_id: str) -> bool:

@@ -94,7 +94,7 @@ async def test_change_above_threshold_notifies_once(db):
     guide, sender = FakeGuide(), FakeSender()
     guide.publish("2026-11-12T02:51", entry(733601, 9.5), entry(719448, 3.1))  # ITA +18,75%; JAP +3%
     report = await poll(db, guide, sender)
-    assert len(report.evaluation.notifications) == 1 and "ITA" in report.evaluation.notifications[0]
+    assert len(report.evaluation.notifications) == 1 and "🇮🇹" in report.evaluation.notifications[0]
     assert len(sender.texts) == 1 and "8,00 € → 9,50 €" in sender.texts[0]
 
     # Stesso file: la seconda richiesta è condizionale (304) e non succede nulla.
@@ -124,7 +124,7 @@ async def test_digest_groups_changes_of_the_same_user(db):
     guide.publish("v1", entry(733601, 12.0), entry(719448, 5.0))
     await poll(db, guide, sender)
     assert len(sender.texts) == 1
-    assert "ITA" in sender.texts[0] and "JAP" in sender.texts[0] and "Variazioni" in sender.texts[0]
+    assert "🇮🇹" in sender.texts[0] and "🇯🇵" in sender.texts[0] and "Prezzi cambiati" in sender.texts[0]
 
 
 async def test_outside_24h_window_uses_template(db):
@@ -209,5 +209,5 @@ def test_template_params_are_single_line_and_bounded():
 
 
 def test_digest_text_single_and_multiple():
-    assert "Variazione di prezzo" in digest_text(["a"])
-    assert "Variazioni di prezzo" in digest_text(["a", "b"])
+    assert "Prezzo cambiato" in digest_text(["a"])
+    assert "Prezzi cambiati" in digest_text(["a", "b"])

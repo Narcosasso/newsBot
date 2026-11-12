@@ -21,9 +21,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from cardbot.alerts.rules import Change, effective_threshold, evaluate, metric
 from cardbot.alerts.sources import PriceData
-from cardbot.bot.format import money, pct
+from cardbot.bot.format import money, pct, trend_icon
 from cardbot.db import Notification, PriceSnapshot, Tracking, TrackingTarget, User, utcnow
-from cardbot.langs import label
+from cardbot.langs import flag
 from cardbot.prices.models import cardmarket_quote
 from cardbot.variants import LABELS_IT
 
@@ -39,9 +39,13 @@ def series_key(target: TrackingTarget) -> str:
 
 
 def change_line(tracking: Tracking, target: TrackingTarget, change: Change) -> str:
-    langs = " · ".join(label(x) for x in target.langs.split(","))
-    return (f"{tracking.label} ({LABELS_IT.get(tracking.variant, tracking.variant)}) — {langs}: "
-            f"{money(change.old)} → {money(change.new)} {pct(change.pct)}")
+    """Una riga sola (i parametri dei template WhatsApp non ammettono a capo)."""
+    name, _, rest = tracking.label.partition(" · ")
+    flags = "".join(flag(x) for x in target.langs.split(","))
+    detail = f"{rest}, {LABELS_IT.get(tracking.variant, tracking.variant)}" if rest else \
+        LABELS_IT.get(tracking.variant, tracking.variant)
+    return (f"{trend_icon(change.pct)} {name} ({detail}) {flags} {money(change.old)} → "
+            f"{money(change.new)} ({pct(change.pct)})")
 
 
 @dataclass
@@ -122,9 +126,11 @@ class SendReport:
 
 
 def digest_text(lines: list[str]) -> str:
-    head = "🔔 *Variazioni di prezzo sulle carte che segui*" if len(lines) > 1 else "🔔 *Variazione di prezzo*"
-    return "\n".join([head, ""] + [f"• {line}" for line in lines] +
-                     ["", "_Fonte: price guide Cardmarket. Prezzo sorvegliato: trend._"])
+    head = "🔔 *Prezzi cambiati!*" if len(lines) > 1 else "🔔 *Prezzo cambiato!*"
+    body = []
+    for line in lines:
+        body += [line, ""]
+    return "\n".join([head, ""] + body + ["Scrivi *novità* per i dettagli o *lista* per le tue carte."])
 
 
 def template_params(lines: list[str]) -> list[str]:

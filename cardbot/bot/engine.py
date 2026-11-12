@@ -1,4 +1,4 @@
-"""Flusso della conversazione: foto -> riconoscimento -> (conferma carta/variante) -> lingue -> prezzi."""
+"""Flusso della conversazione: foto o testo -> carta (conferma carta/variante) -> lingue -> prezzi -> avvisi."""
 
 from __future__ import annotations
 
@@ -8,12 +8,13 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from cardbot.alerts.news import build_news
 from cardbot.alerts.rules import Threshold, effective_threshold
 from cardbot.alerts.tracking import target_specs, upsert_tracking
 from cardbot.bot.commands import Command, parse_command
-from cardbot.bot.format import HELP, format_quotes, format_tracking_list
+from cardbot.bot.format import format_quotes, format_tracking_list, help_text, welcome_text
 from cardbot.db import Tracking, get_or_create_user, load_state, save_state, utcnow
-from cardbot.langs import format_langs, label, parse_langs, supported_help
+from cardbot.langs import LANGS, full_name, parse_langs
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import Candidate, CardMatcher, MatchResult
 from cardbot.recognition.text_query import TextQuery, parse_query
@@ -22,12 +23,15 @@ from cardbot.variants import LABELS_IT, choose_variant
 
 log = logging.getLogger(__name__)
 
-BAD_PHOTO_TIPS = ("Prova con una foto più nitida: carta dritta, ben illuminata, senza riflessi, "
-                  "con nome e numero in basso leggibili.")
-YES = {"notify:yes", "si", "sì", "si avvisami", "sì, avvisami", "ok", "yes"}
+YES = {"notify:yes", "si", "sì", "si avvisami", "sì, avvisami", "sì avvisami", "ok", "yes"}
 NO = {"notify:no", "no", "no grazie", "no, grazie"}
-TEXT_TIP = ("Puoi anche scrivere codice set e numero stampati in basso sulla carta, es. *MEW 006*, "
-            "*SV2a 006/165* oppure *Charizard ex 006/165*.")
+NUMBERS = ["1️⃣", "2️⃣", "3️⃣"]
+
+PHOTO_TIPS = "📸 Riprova con la carta dritta, ben illuminata e senza riflessi, con nome e numero leggibili."
+TEXT_TIP = ("⌨️ Oppure scrivimi codice e numero stampati in basso a sinistra sulla carta, "
+            "es. *MEW 006* o *30C 154/128*.")
+NO_CARDS = ("Non segui ancora nessuna carta 🙂\n"
+            "Cercane una (es. *30C 154*) e rispondi *Sì* quando ti chiedo degli avvisi.")
 
 
 @dataclass
@@ -46,6 +50,16 @@ class Messenger(Protocol):
     async def send_buttons(self, to: str, body: str, buttons: list[tuple[str, str]]) -> None: ...
 
 
+def _name_and_set(label: str) -> tuple[str, str]:
+    """('Gengar ex', '30th Celebration 154/128') da 'Gengar ex · 30th Celebration 154/128'."""
+    name, _, rest = label.partition(" · ")
+    return name, rest
+
+
+def _langs_text(codes: list[str]) -> str:
+    return ", ".join(full_name(c) for c in codes)
+
+
 class Engine:
     def __init__(self, session_factory: sessionmaker[Session], messenger: Messenger, vision: CardVision,
                  matcher: CardMatcher, prices: PriceService, timezone: str = "Europe/Rome") -> None:
@@ -56,17 +70,30 @@ class Engine:
         self._prices = prices
         self._tz = timezone
 
+    @property
+    def _photos(self) -> bool:
+        return getattr(self._vision, "enabled", True)
+
+    def _threshold_text(self, user) -> str:
+        return Threshold(pct=user.threshold_pct, eur=user.threshold_eur).describe()
+
     async def handle(self, msg: Incoming) -> None:
         with self._sessions() as session:
-            user = get_or_create_user(session, msg.wa_id)
+            user, created = get_or_create_user(session, msg.wa_id)
             user.last_inbound_at = utcnow()  # apre (o rinnova) la finestra di servizio di 24 ore
             state = load_state(session, user)
             try:
+                if created:
+                    await self._out.send_text(user.wa_id, welcome_text(self._photos, self._threshold_text(user)))
+                    command = parse_command(msg.text or "") if msg.kind == "text" else None
+                    if command is not None and command.kind == "help":
+                        session.commit()
+                        return  # "ciao" / "comandi" al primo messaggio: il benvenuto basta
                 await self._dispatch(session, user, state, msg)
             except Exception:
                 log.exception("Errore gestendo il messaggio di %s", msg.wa_id)
                 save_state(state, "idle")
-                await self._out.send_text(msg.wa_id, "😵 Qualcosa è andato storto. Riprova tra poco.")
+                await self._out.send_text(msg.wa_id, "😵 Ops, qualcosa è andato storto. Riprova tra un attimo.")
             session.commit()
 
     # --- smistamento -------------------------------------------------------------------------------
@@ -77,9 +104,10 @@ class Engine:
             return
         reply = (msg.button_id or msg.text or "").strip()
         lowered = reply.lower()
-        if lowered in {"annulla", "reset"}:
+        if lowered.lstrip("/") in {"annulla", "reset"}:
             save_state(state, "idle")
-            await self._out.send_text(user.wa_id, "Ok, annullato. Mandami una foto o un codice quando vuoi.")
+            await self._out.send_text(user.wa_id, "👌 Ok, ricominciamo da capo.\n"
+                                                  "Scrivimi il codice di una carta, es. *30C 154*.")
             return
         command = parse_command(reply) if msg.kind == "text" else None
         if command is not None:
@@ -103,27 +131,27 @@ class Engine:
         elif query:
             await self._on_text_query(user, state, query)
         else:
-            await self._out.send_text(user.wa_id, "Mandami la foto di una carta Pokémon 📸 oppure codice set e "
-                                                  "numero (es. *MEW 006*). Scrivi *aiuto* per i comandi.")
+            await self._out.send_text(user.wa_id, "🤔 Non ho capito.\nScrivimi codice e numero di una carta "
+                                                  "(es. *30C 154*) oppure *comandi* per vedere cosa so fare.")
 
-    # --- foto ----------------------------------------------------------------------------------------
+    # --- ricerca -----------------------------------------------------------------------------------
 
     async def _on_image(self, user, state, msg: Incoming) -> None:
-        await self._out.send_text(user.wa_id, "🔍 Analizzo la foto…")
+        await self._out.send_text(user.wa_id, "🔍 Un attimo, guardo la foto…")
         try:
             vision = await self._vision.read_card(msg.image, msg.media_type)
         except VisionError as exc:
             await self._out.send_text(user.wa_id, f"⚠️ {exc}.")
             return
         if not vision.is_pokemon_card:
-            await self._out.send_text(user.wa_id, "Non mi sembra una carta Pokémon. " + BAD_PHOTO_TIPS)
+            await self._out.send_text(user.wa_id, f"🤔 Non mi sembra una carta Pokémon.\n{PHOTO_TIPS}")
             return
 
         result = await self._matcher.match(vision)
         if not result.candidates:
-            read = ", ".join(x for x in (vision.name, vision.set_code, vision.number) if x) or "nulla"
-            await self._out.send_text(user.wa_id, f"Ho letto: _{read}_, ma non trovo la carta nel catalogo. "
-                                                  + BAD_PHOTO_TIPS + "\n" + TEXT_TIP)
+            read = " ".join(x for x in (vision.name, vision.set_code, vision.number) if x)
+            seen = f"Ho letto «{read}», ma non" if read else "Non"
+            await self._out.send_text(user.wa_id, f"😕 {seen} trovo la carta.\n{PHOTO_TIPS}\n{TEXT_TIP}")
             return
         caption = parse_langs(msg.text) if msg.text else None
         await self._present_match(user, state, result, hint=vision.variant_hint,
@@ -132,7 +160,8 @@ class Engine:
     async def _on_text_query(self, user, state, query: TextQuery) -> None:
         result = await self._matcher.match_text(query)
         if not result.candidates:
-            await self._out.send_text(user.wa_id, "Non trovo questa carta nel catalogo. " + TEXT_TIP)
+            await self._out.send_text(user.wa_id, "😕 Non trovo questa carta.\nControlla codice e numero in "
+                                                  "basso a sinistra sulla carta, es. *MEW 006* o *30C 154/128*.")
             return
         await self._present_match(user, state, result, hint=query.variant or "unknown", langs=query.langs or None)
 
@@ -149,10 +178,11 @@ class Engine:
             return
 
         save_state(state, "awaiting_candidate", payload)
-        lines = ["🤔 Non sono sicuro al 100%. Quale di queste è?"]
-        for i, c in enumerate(result.candidates, 1):
-            lines.append(f"{i}) {c.short()}")
-        lines.append("Se nessuna è giusta, rimanda una foto più nitida o scrivi codice set e numero (es. MEW 006).")
+        lines = ["🤔 Ho trovato più carte simili. Qual è la tua?", ""]
+        for i, c in enumerate(result.candidates):
+            name, rest = _name_and_set(c.short())
+            lines.append(f"{NUMBERS[i]} *{name}* · {rest}")
+        lines += ["", "Nessuna? Scrivimi codice e numero, es. *30C 154*."]
         buttons = [(f"cand:{i}", str(i + 1)) for i in range(len(result.candidates))]
         await self._out.send_buttons(user.wa_id, "\n".join(lines), buttons)
 
@@ -165,8 +195,8 @@ class Engine:
         elif reply.isdigit():
             idx = int(reply) - 1
         if idx is None or not 0 <= idx < len(cands):
-            await self._out.send_text(user.wa_id, f"Rispondi con un numero da 1 a {len(cands)}, "
-                                                  "oppure *annulla*.")
+            await self._out.send_text(user.wa_id, f"Tocca un pulsante o scrivi un numero da 1 a {len(cands)} "
+                                                  "(oppure *annulla*).")
             return
         payload["selected"] = cands[idx]
         await self._after_card(user, state, payload)
@@ -175,11 +205,12 @@ class Engine:
 
     async def _after_card(self, user, state, payload: dict) -> None:
         cand = Candidate(**payload["selected"])
+        name, rest = _name_and_set(cand.short())
         variant = payload.get("variant") or choose_variant(cand.variants, payload.get("hint", "unknown"))
         if variant is None:
             save_state(state, "awaiting_variant", payload)
             buttons = [(f"var:{v}", LABELS_IT[v]) for v in cand.variants[:3]]
-            await self._out.send_buttons(user.wa_id, f"*{cand.short()}*\nQuale versione hai?", buttons)
+            await self._out.send_buttons(user.wa_id, f"🃏 *{name}*\n{rest}\n\nQuale versione hai?", buttons)
             return
         payload["variant"] = variant
         langs = payload.get("langs")
@@ -187,12 +218,12 @@ class Engine:
             await self._send_prices(user, state, payload, langs)
             return
         save_state(state, "awaiting_langs", payload)
-        body = (f"✅ *{cand.short()}* · {LABELS_IT[variant]}\n\nQuali lingue ti interessano? "
-                "Es. *ita, eng, jap*")
+        body = (f"✅ Trovata!\n🃏 *{name}*\n{rest} · {LABELS_IT[variant]}\n\n"
+                "Per quali lingue vuoi i prezzi?\nScrivi ad esempio *ita*, *ita eng* o *ita jap*.")
         if user.langs:
-            last = format_langs(user.langs.split(","))
+            last = ", ".join(LANGS[c][0].lower() for c in user.langs.split(","))
+            body += f"\n\nOppure tocca il pulsante per usare quelle dell'ultima volta ({last})."
             await self._out.send_buttons(user.wa_id, body, [("langs:last", "Come l'ultima volta")])
-            await self._out.send_text(user.wa_id, f"_(ultima volta: {last})_")
         else:
             await self._out.send_text(user.wa_id, body)
 
@@ -208,8 +239,8 @@ class Engine:
         else:
             variant = mapping.get(reply)
         if variant not in cand.variants:
-            options = ", ".join(LABELS_IT[v].lower() for v in cand.variants)
-            await self._out.send_text(user.wa_id, f"Scegli una versione tra: {options}.")
+            options = ", ".join(f"*{LABELS_IT[v].lower()}*" for v in cand.variants)
+            await self._out.send_text(user.wa_id, f"Scegli una di queste versioni: {options}.")
             return
         payload["variant"] = variant
         await self._after_card(user, state, payload)
@@ -221,9 +252,9 @@ class Engine:
         else:
             parsed = parse_langs(reply)
             if not parsed.ok:
-                unknown = f" Non conosco: {', '.join(parsed.unknown)}." if parsed.unknown else ""
-                await self._out.send_text(user.wa_id, f"Non ho capito le lingue.{unknown} "
-                                                      f"Usa per esempio: ita, eng, jap ({supported_help()}).")
+                unknown = f"Non conosco «{', '.join(parsed.unknown)}». " if parsed.unknown else ""
+                await self._out.send_text(user.wa_id, f"🤔 {unknown}Scrivi le lingue così: *ita*, *ita eng*, "
+                                                      "*ita jap*…\n(ita, eng, jap, kor, deu, fra, spa, por, cin)")
                 return
             langs = parsed.langs
         await self._send_prices(user, state, payload, langs)
@@ -241,28 +272,29 @@ class Engine:
             save_state(state, "idle", next_payload)
             return
         save_state(state, "awaiting_notify", next_payload)
-        await self._out.send_buttons(user.wa_id, "🔔 Vuoi una notifica quando il prezzo cambia?",
+        await self._out.send_buttons(user.wa_id, "🔔 Vuoi che ti avvisi quando il prezzo cambia?",
                                      [("notify:yes", "Sì, avvisami"), ("notify:no", "No, grazie")])
 
     async def _on_notify_reply(self, session, user, state, reply: str) -> None:
         payload = dict(state.payload)
         save_state(state, "idle", payload)
         if reply in NO:
-            await self._out.send_text(user.wa_id, "Ok, niente notifiche per questa carta.")
+            await self._out.send_text(user.wa_id, "👌 Va bene, niente avvisi per questa carta.")
             return
         cand = Candidate(**payload["selected"])
+        name, _ = _name_and_set(cand.short())
         result = upsert_tracking(session, user, card_id=cand.card_id, catalog_lang=cand.catalog_lang,
                                  variant=payload["variant"], label=cand.short(), langs=payload["langs"],
                                  specs=payload["targets"])
         th = effective_threshold(user, result.tracking)
-        langs = " · ".join(label(x) for x in result.tracked_langs)
-        lines = [f"✅ {'Ti avviserò' if result.created else 'Aggiornato: ti avviserò'} quando il trend Cardmarket "
-                 f"di *{cand.short()}* ({LABELS_IT[payload['variant']]}) cambia di almeno {th.describe()}.",
-                 f"Lingue: {langs}"]
+        lines = [f"✅ {'Fatto!' if result.created else 'Aggiornato!'} Seguo *{name}* "
+                 f"({LABELS_IT[payload['variant']]}) in {_langs_text(result.tracked_langs)}.",
+                 f"🔔 Ti scrivo quando il prezzo sale o scende di almeno {th.describe()}.",
+                 "⏰ Controllo i prezzi ogni mattina."]
         if result.untracked_langs:
-            lines.append("Non tracciabili (nessun prezzo): "
-                         + ", ".join(label(x) for x in result.untracked_langs))
-        lines.append("_Controllo i prezzi una volta al giorno, quando Cardmarket li aggiorna._")
+            lines.append(f"⚠️ {_langs_text(result.untracked_langs)}: nessun prezzo disponibile, non posso "
+                         "seguirlo.")
+        lines += ["", "Scrivi *lista* per le tue carte o *novità* per gli ultimi movimenti."]
         await self._out.send_text(user.wa_id, "\n".join(lines))
 
     # --- comandi di gestione -------------------------------------------------------------------------
@@ -274,40 +306,41 @@ class Engine:
         """La carta n della lista (se ne segui una sola il numero si può omettere)."""
         trackings = self._trackings(session, user)
         if not trackings:
-            await self._out.send_text(user.wa_id, "Non segui nessuna carta. Cercane una e rispondi *sì* "
-                                                  "quando ti chiedo delle notifiche.")
+            await self._out.send_text(user.wa_id, NO_CARDS)
             return None
         if index is None and len(trackings) == 1:
             return trackings[0]
         if index is None or not 1 <= index <= len(trackings):
-            await self._out.send_text(user.wa_id, f"Indica il numero della carta (da 1 a {len(trackings)}).\n\n"
+            await self._out.send_text(user.wa_id, f"Quale carta? Scrivi un numero da 1 a {len(trackings)}.\n\n"
                                                   + format_tracking_list(trackings, user))
             return None
         return trackings[index - 1]
 
     async def _on_command(self, session, user, state, cmd: Command) -> None:
         if cmd.kind == "help":
-            await self._out.send_text(user.wa_id, HELP)
+            await self._out.send_text(user.wa_id, help_text(self._photos, self._threshold_text(user)))
         elif cmd.kind == "supported_langs":
-            await self._out.send_text(user.wa_id, f"Lingue supportate: {supported_help()}")
+            names = "\n".join(f"• {full_name(c)} · *{LANGS[c][0].lower()}*" for c in LANGS)
+            await self._out.send_text(user.wa_id, f"🌍 *Lingue che conosco*\n{names}")
         elif cmd.kind == "error":
             await self._out.send_text(user.wa_id, cmd.error)
         elif cmd.kind == "list":
             trackings = self._trackings(session, user)
-            text = format_tracking_list(trackings, user) if trackings else (
-                "Non segui ancora nessuna carta. Cercane una (foto o es. *MEW 006*) e rispondi *sì* "
-                "quando ti chiedo delle notifiche.")
-            await self._out.send_text(user.wa_id, text)
+            await self._out.send_text(user.wa_id, format_tracking_list(trackings, user) if trackings else NO_CARDS)
+        elif cmd.kind == "news":
+            await self._out.send_text(user.wa_id, build_news(session, user, self._tz))
         elif cmd.kind == "stop":
             await self._cmd_stop(session, user, cmd)
         elif cmd.kind == "langs":
             await self._cmd_langs(session, user, cmd)
         elif cmd.kind == "threshold_show":
-            th = Threshold(pct=user.threshold_pct, eur=user.threshold_eur)
-            await self._out.send_text(user.wa_id, f"Soglia generale: avviso se il trend cambia di almeno "
-                                                  f"*{th.describe()}*.\nPer cambiarla: *soglia 15%*, *soglia 2€*, "
-                                                  "*soglia 15% 2€* (0 disattiva una condizione); per una sola "
-                                                  "carta: *soglia 1 20%*.")
+            await self._out.send_text(user.wa_id, (
+                f"🔔 *Soglia degli avvisi:* ±{self._threshold_text(user)}\n"
+                "Devono valere entrambe, così le carte economiche non ti riempiono di messaggi.\n\n"
+                "Per cambiarla:\n"
+                "• *soglia 15%* · *soglia 2€* · *soglia 15% 2€*\n"
+                "• *soglia 15% 0€* · conta solo la percentuale\n"
+                "• *soglia 1 20%* · solo per la carta 1 della lista"))
         elif cmd.kind == "threshold":
             await self._cmd_threshold(session, user, cmd)
 
@@ -316,15 +349,18 @@ class Engine:
             trackings = self._trackings(session, user)
             for t in trackings:
                 t.active = False
-            await self._out.send_text(user.wa_id, f"🔕 Non seguo più nessuna carta ({len(trackings)} rimosse).")
+            text = (f"🔕 Fatto, non seguo più nessuna carta ({len(trackings)} rimosse)." if trackings
+                    else "Non seguivi nessuna carta 🙂")
+            await self._out.send_text(user.wa_id, text)
             return
         tracking = await self._pick(session, user, cmd.index)
         if tracking is None:
             return
         tracking.active = False
         session.flush()
+        name, rest = _name_and_set(tracking.label)
+        text = f"🔕 Non seguo più *{name}* ({rest} · {LABELS_IT.get(tracking.variant, tracking.variant)})."
         remaining = self._trackings(session, user)
-        text = f"🔕 Non seguo più *{tracking.label}* ({LABELS_IT.get(tracking.variant, tracking.variant)})."
         if remaining:
             text += "\n\n" + format_tracking_list(remaining, user)
         await self._out.send_text(user.wa_id, text)
@@ -336,15 +372,15 @@ class Engine:
         quotes = await self._prices.quotes(tracking.card_id, tracking.catalog_lang, tracking.variant, cmd.langs)
         specs = target_specs(quotes)
         if not specs:
-            await self._out.send_text(user.wa_id, "Nessuna di queste lingue ha prezzi tracciabili: lingue "
-                                                  "non modificate.")
+            await self._out.send_text(user.wa_id, "⚠️ Per queste lingue non ci sono prezzi da seguire: lascio "
+                                                  "tutto com'era.")
             return
         result = upsert_tracking(session, user, card_id=tracking.card_id, catalog_lang=tracking.catalog_lang,
                                  variant=tracking.variant, label=tracking.label, langs=cmd.langs, specs=specs)
-        text = (f"✅ *{tracking.label}*: ora seguo "
-                + " · ".join(label(x) for x in result.tracked_langs) + ".")
+        name, _ = _name_and_set(tracking.label)
+        text = f"✅ *{name}*: ora seguo {_langs_text(result.tracked_langs)}."
         if result.untracked_langs:
-            text += "\nNon tracciabili (nessun prezzo): " + ", ".join(label(x) for x in result.untracked_langs)
+            text += f"\n⚠️ {_langs_text(result.untracked_langs)}: nessun prezzo disponibile, non posso seguirlo."
         await self._out.send_text(user.wa_id, text)
 
     async def _cmd_threshold(self, session, user, cmd: Command) -> None:
@@ -353,24 +389,23 @@ class Engine:
                 user.threshold_pct = cmd.pct
             if cmd.set_eur:
                 user.threshold_eur = cmd.eur
-            th = Threshold(pct=user.threshold_pct, eur=user.threshold_eur)
             custom = sum(1 for t in self._trackings(session, user) if t.threshold_custom)
             note = ""
             if custom == 1:
-                note = "\n_1 carta ha una soglia propria e non cambia._"
+                note = "\n_(1 carta ha una soglia sua e resta com'è)_"
             elif custom > 1:
-                note = f"\n_{custom} carte hanno una soglia propria e non cambiano._"
-            await self._out.send_text(user.wa_id, f"✅ Soglia generale: avviso se il trend cambia di almeno "
-                                                  f"*{th.describe()}*.{note}")
+                note = f"\n_({custom} carte hanno una soglia loro e restano come sono)_"
+            await self._out.send_text(user.wa_id, f"✅ Fatto! Ora ti avviso quando il prezzo cambia di almeno "
+                                                  f"*±{self._threshold_text(user)}*.{note}")
             return
         tracking = await self._pick(session, user, cmd.index)
         if tracking is None:
             return
+        name, _ = _name_and_set(tracking.label)
         if cmd.reset:
             tracking.threshold_custom = False
-            th = Threshold(pct=user.threshold_pct, eur=user.threshold_eur)
-            await self._out.send_text(user.wa_id, f"✅ *{tracking.label}* usa di nuovo la soglia generale "
-                                                  f"({th.describe()}).")
+            await self._out.send_text(user.wa_id, f"✅ *{name}* torna alla soglia generale "
+                                                  f"(±{self._threshold_text(user)}).")
             return
         if not tracking.threshold_custom:  # parte dalla soglia generale e cambia solo ciò che hai indicato
             tracking.threshold_pct, tracking.threshold_eur = user.threshold_pct, user.threshold_eur
@@ -380,5 +415,5 @@ class Engine:
         if cmd.set_eur:
             tracking.threshold_eur = cmd.eur
         th = Threshold(pct=tracking.threshold_pct, eur=tracking.threshold_eur)
-        await self._out.send_text(user.wa_id, f"✅ *{tracking.label}*: avviso se il trend cambia di almeno "
-                                              f"*{th.describe()}*.")
+        await self._out.send_text(user.wa_id, f"✅ Per *{name}* ti avviso quando il prezzo cambia di almeno "
+                                              f"*±{th.describe()}*.")

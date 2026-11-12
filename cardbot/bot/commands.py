@@ -7,7 +7,8 @@
   soglia 15% | 2€ | 15% 2€    soglia generale (0% o 0€ disattiva quella condizione)
   soglia <n> 20%              soglia solo per la carta n
   soglia <n> predefinita      la carta n torna alla soglia generale
-  aiuto                       guida
+  novità                      come si sono mossi i prezzi delle carte seguite
+  comandi | aiuto | /comandi  guida (lo "/" iniziale è facoltativo per tutti i comandi)
 """
 
 from __future__ import annotations
@@ -18,7 +19,8 @@ from dataclasses import dataclass, field
 from cardbot.langs import parse_langs
 
 LIST_WORDS = {"lista", "elenco", "carte", "tracciate", "seguite"}
-HELP_WORDS = {"aiuto", "help", "?", "comandi", "start", "ciao"}
+HELP_WORDS = {"aiuto", "help", "?", "comandi", "comando", "menu", "start", "ciao", "info"}
+NEWS_WORDS = {"novità", "novita", "novita'", "news", "aggiornamenti"}
 RESET_WORDS = {"predefinita", "default", "generale", "reset"}
 ALL_WORDS = {"tutte", "tutto", "tutti", "all"}
 
@@ -28,7 +30,7 @@ _EUR = re.compile(r"^(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€|eur|euro)$|^€\s*(\d
 
 @dataclass
 class Command:
-    kind: str  # list | stop | langs | threshold_show | threshold | help | supported_langs | error
+    kind: str  # list | news | stop | langs | threshold_show | threshold | help | supported_langs | error
     index: int | None = None
     all: bool = False
     langs: list[str] = field(default_factory=list)
@@ -60,17 +62,19 @@ def parse_command(text: str) -> Command | None:
     tokens = _merge_unit_tokens(text.strip().split())
     if not tokens:
         return None
-    head, rest = tokens[0].lower(), tokens[1:]
+    head, rest = tokens[0].lower().lstrip("/").rstrip("?!."), tokens[1:]  # "/comandi" come "comandi"
 
     if head in HELP_WORDS and not rest:
         return Command("help")
     if head in LIST_WORDS and not rest:
         return Command("list")
+    if head in NEWS_WORDS and not rest:
+        return Command("news")
 
     if head == "stop":
         if not rest:
-            return Command("error", error="Quale carta? Scrivi *stop* seguito dal numero, es. *stop 1* "
-                                          "(numeri in *lista*), oppure *stop tutte*.")
+            return Command("error", error="Quale carta vuoi smettere di seguire? Scrivi *stop* e il numero "
+                                          "che vedi in *lista*, es. *stop 1*, oppure *stop tutte*.")
         if rest[0].lower() in ALL_WORDS:
             return Command("stop", all=True)
         if rest[0].isdigit():
@@ -83,8 +87,9 @@ def parse_command(text: str) -> Command | None:
         index = int(rest[0]) if rest[0].isdigit() else None
         parsed = parse_langs(" ".join(rest[1:] if index is not None else rest))
         if not parsed.ok:
-            unknown = f" Non conosco: {', '.join(parsed.unknown)}." if parsed.unknown else ""
-            return Command("error", error=f"Lingue non valide.{unknown} Esempio: *lingue 1 ita, jap*.")
+            unknown = f"Non conosco «{', '.join(parsed.unknown)}». " if parsed.unknown else ""
+            return Command("error", error=f"{unknown}Scrivi le lingue così: *lingue 1 ita jap* "
+                                          "(ita, eng, jap, kor, deu, fra, spa, por).")
         return Command("langs", index=index, langs=parsed.langs)
 
     if head == "soglia":
@@ -95,7 +100,8 @@ def parse_command(text: str) -> Command | None:
             args = args[1:]
         if not args:
             return Command("threshold_show") if cmd.index is None else Command(
-                "error", error="Indica la soglia, es. *soglia 1 20%*, *soglia 1 2€* o *soglia 1 predefinita*.")
+                "error", error="Che soglia vuoi per questa carta? Es. *soglia 1 20%*, *soglia 1 2€* "
+                                       "o *soglia 1 predefinita*.")
         for arg in args:
             low = arg.lower()
             if low in RESET_WORDS:
@@ -105,12 +111,12 @@ def parse_command(text: str) -> Command | None:
             elif m := _EUR.match(low):
                 cmd.eur, cmd.set_eur = _num(m.group(1) or m.group(2)), True
             else:
-                return Command("error", error="Soglia non valida. Esempi: *soglia 15%*, *soglia 2€*, "
+                return Command("error", error="Non ho capito la soglia 🤔 Esempi: *soglia 15%*, *soglia 2€*, "
                                               "*soglia 15% 2€*, *soglia 1 20%* (solo la carta 1).")
         if cmd.reset and cmd.index is None:
-            return Command("error", error="Per la soglia generale indica un valore, es. *soglia 10% 1€*.")
+            return Command("error", error="Indica un valore, es. *soglia 10% 1€*.")
         if (cmd.set_pct and cmd.pct > 1000) or (cmd.set_eur and cmd.eur > 100000):
-            return Command("error", error="Valore di soglia troppo alto.")
+            return Command("error", error="Questa soglia è troppo alta.")
         # 0 disattiva la condizione.
         if cmd.set_pct and cmd.pct == 0:
             cmd.pct = None

@@ -20,6 +20,18 @@ LANGS: dict[str, tuple[str, str, tuple[str, ...]]] = {
 
 _ALIAS = {alias: code for code, (_, _, aliases) in LANGS.items() for alias in aliases}
 
+NAMES_IT = {"it": "Italiano", "en": "Inglese", "ja": "Giapponese", "ko": "Coreano", "de": "Tedesco",
+            "fr": "Francese", "es": "Spagnolo", "pt": "Portoghese", "zh": "Cinese"}
+
+
+def full_name(code: str) -> str:
+    """Bandiera e nome per esteso, es. '🇮🇹 Italiano'."""
+    return f"{LANGS[code][1]} {NAMES_IT[code]}"
+
+
+def flag(code: str) -> str:
+    return LANGS[code][1]
+
 # Lingue stampate sulle carte "internazionali": su Cardmarket condividono lo stesso prodotto.
 INTERNATIONAL = frozenset({"it", "en", "de", "fr", "es", "pt"})
 
