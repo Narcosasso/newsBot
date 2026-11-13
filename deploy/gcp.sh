@@ -24,7 +24,7 @@ SCHEDULER_SA="cardbot-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
 
 SECRETS=(WHATSAPP_TOKEN WHATSAPP_APP_SECRET WHATSAPP_VERIFY_TOKEN ANTHROPIC_API_KEY DATABASE_URL)
 PLAIN_VARS=(WHATSAPP_PHONE_NUMBER_ID WHATSAPP_API_VERSION ALLOWED_WA_IDS WHATSAPP_ALERT_TEMPLATE
-            WHATSAPP_TEMPLATE_LANG VISION_MODEL VISION_EFFORT TIMEZONE TCGDEX_MAX_RPS)
+            WHATSAPP_TEMPLATE_LANG PHOTO_READER VISION_MODEL VISION_EFFORT TIMEZONE TCGDEX_MAX_RPS)
 
 gc() { gcloud --project "$PROJECT_ID" "$@"; }
 
@@ -40,14 +40,16 @@ env_value() {
 
 cmd_setup() {
   gc services enable run.googleapis.com cloudscheduler.googleapis.com secretmanager.googleapis.com \
-    artifactregistry.googleapis.com cloudbuild.googleapis.com
+    artifactregistry.googleapis.com cloudbuild.googleapis.com vision.googleapis.com
   for sa in cardbot-runtime cardbot-scheduler; do
     gc iam service-accounts describe "${sa}@${PROJECT_ID}.iam.gserviceaccount.com" >/dev/null 2>&1 \
       || gc iam service-accounts create "$sa" --display-name "$sa"
   done
-  # Il servizio e il job leggono i segreti; nient'altro.
-  gc projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${RUNTIME_SA}" \
-    --role roles/secretmanager.secretAccessor --condition None >/dev/null
+  # Il servizio e il job leggono i segreti e usano le API del progetto (Cloud Vision per le foto).
+  for role in roles/secretmanager.secretAccessor roles/serviceusage.serviceUsageConsumer; do
+    gc projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${RUNTIME_SA}" \
+      --role "$role" --condition None >/dev/null
+  done
   # Nei progetti nuovi l'account che esegue le build ("run deploy --source") non riceve più i permessi in
   # automatico: gli diamo il ruolo Cloud Run Builder e l'uso dei servizi del progetto.
   local number build_sa

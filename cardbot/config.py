@@ -20,7 +20,11 @@ class Settings(BaseSettings):
     whatsapp_alert_template: str = "price_alert"
     whatsapp_template_lang: str = "it"
 
-    # --- Claude (riconoscimento foto) ---
+    # --- Lettura delle foto ---
+    # google: Google Cloud Vision, gratis fino a 1.000 foto/mese (su Cloud Run nessuna chiave da configurare)
+    # claude: Claude vision (serve ANTHROPIC_API_KEY) · off: foto disattivate, solo ricerca testuale
+    photo_reader: str = "google"
+    google_vision_api_key: str = ""  # solo per provare in locale; su Cloud Run si usa il service account
     anthropic_api_key: str = ""
     vision_model: str = "claude-opus-5-5"
     vision_effort: str = "medium"

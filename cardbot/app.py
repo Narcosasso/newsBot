@@ -14,7 +14,7 @@ from cardbot.config import Settings, get_settings
 from cardbot.db import claim_inbound, make_engine, make_session_factory
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import CardMatcher
-from cardbot.recognition.vision import make_vision
+from cardbot.recognition.readers import make_reader
 from cardbot.whatsapp.client import WhatsAppClient
 from cardbot.whatsapp.webhook import InboundEvent, parse_events, verify_signature
 
@@ -38,7 +38,7 @@ def build_container(settings: Settings) -> Container:
     catalog = TCGdexCatalog(settings.tcgdex_base_url, settings.tcgdex_max_rps)
     engine = Engine(
         sessions, whatsapp,
-        make_vision(settings.anthropic_api_key, settings.vision_model, settings.vision_effort),
+        make_reader(settings),
         CardMatcher(catalog), PriceService(catalog), timezone=settings.timezone,
     )
     return Container(settings, sessions, whatsapp, engine)

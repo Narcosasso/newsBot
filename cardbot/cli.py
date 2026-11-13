@@ -21,7 +21,8 @@ from cardbot.db import ConversationState, make_engine, make_session_factory
 from cardbot.langs import parse_langs
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import CardMatcher
-from cardbot.recognition.vision import CardVision, VisionError
+from cardbot.recognition.readers import make_reader
+from cardbot.recognition.vision import VisionError
 
 CLI_USER = "cli-user"
 
@@ -44,11 +45,12 @@ class NoVision:
 
 async def simulate(image_path: Path, langs: str | None) -> int:
     settings = get_settings()
-    if not settings.anthropic_api_key:
-        print("Serve ANTHROPIC_API_KEY nel file .env per il riconoscimento della foto.", file=sys.stderr)
+    vision = make_reader(settings)
+    if not vision.enabled:
+        print("Foto disattivate: imposta PHOTO_READER=google (con GOOGLE_VISION_API_KEY in locale) "
+              "oppure PHOTO_READER=claude con ANTHROPIC_API_KEY.", file=sys.stderr)
         return 2
     media_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
-    vision = CardVision(settings.anthropic_api_key, settings.vision_model, settings.vision_effort)
     return await _converse(vision, Incoming(wa_id=CLI_USER, kind="image", image=image_path.read_bytes(),
                                             media_type=media_type, text=langs))
 
