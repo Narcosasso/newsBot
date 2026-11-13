@@ -9,12 +9,16 @@ Cosa è davvero "per lingua" con dati gratuiti:
 
 from __future__ import annotations
 
+import logging
+
 from typing import Any
 
 from cardbot.catalog.base import Catalog
 from cardbot.langs import INTERNATIONAL
 from cardbot.prices.models import LangQuote, cardmarket_quote, tcgplayer_quote
 from cardbot.variants import variant_entry
+
+log = logging.getLogger(__name__)
 
 ASIAN_CATALOGS = {"ja", "zh-tw"}
 
@@ -45,11 +49,69 @@ def quote_card(card: dict[str, Any], variant: str, langs: list[str], with_tcgpla
                      tcgplayer=tp, catalog_lang=catalog_lang, shared_product=shared)
 
 
-class PriceService:
-    def __init__(self, catalog: Catalog) -> None:
-        self._catalog = catalog
+def tcgplayer_id(card: dict[str, Any], variant: str) -> str | None:
+    """ID TCGplayer della carta (per i prezzi PSA 10), se TCGdex lo conosce."""
+    entry = variant_entry(card, variant) or {}
+    tid = (entry.get("thirdParty") or {}).get("tcgplayer")
+    if not tid:
+        for v in card.get("variants_detailed") or []:
+            tid = tid or (v.get("thirdParty") or {}).get("tcgplayer")
+    if not tid:
+        for price in ((card.get("pricing") or {}).get("tcgplayer") or {}).values():
+            if isinstance(price, dict) and price.get("productId"):
+                tid = price["productId"]
+                break
+    return str(tid) if tid else None
 
-    async def quotes(self, card_id: str, catalog_lang: str, variant: str, langs: list[str]) -> list[LangQuote]:
+
+class PriceService:
+    def __init__(self, catalog: Catalog, graded: Any = None) -> None:
+        self._catalog = catalog
+        self._graded = graded  # GradedPrices (PokemonPriceTracker) oppure None
+
+    @property
+    def graded_enabled(self) -> bool:
+        return bool(self._graded and self._graded.enabled)
+
+    async def graded_quote(self, card_id: str, catalog_lang: str, variant: str, for_chat: bool = True):
+        """Prezzo PSA 10 della carta: per le carte internazionali quello della stampa inglese."""
+        if not self.graded_enabled:
+            return None
+        card = await self._catalog.get_card(catalog_lang, card_id)
+        if card is None:
+            return None
+        try:
+            if catalog_lang in ASIAN_CATALOGS:
+                language = "japanese" if catalog_lang == "ja" else "english"
+                eq, _ = await self.find_equivalent(card, "en")
+                name = (eq or {}).get("name")
+                tid = None
+            else:
+                language = "english"
+                en = await self._catalog.get_card("en", card_id) or card
+                name, tid = en.get("name"), tcgplayer_id(en, variant)
+            if tid:
+                return await self._graded.by_id(tid, language, for_chat=for_chat)
+            if not name:
+                return None
+            total = ((card.get("set") or {}).get("cardCount") or {}).get("official")
+            return await self._graded.search(name, card.get("localId", ""), str(total) if total else None,
+                                             language, for_chat=for_chat)
+        except Exception as exc:  # una fonte in più non deve mai bloccare la risposta principale
+            log.warning("Prezzo PSA 10 non disponibile per %s: %s", card_id, exc)
+            return None
+
+    async def quotes(self, card_id: str, catalog_lang: str, variant: str, langs: list[str],
+                     with_graded: bool = True) -> list[LangQuote]:
+        out = await self._cardmarket_quotes(card_id, catalog_lang, variant, langs)
+        if with_graded and self.graded_enabled:
+            for q in out:
+                if q.card_id and q.catalog_lang:
+                    q.graded = await self.graded_quote(q.card_id, q.catalog_lang, variant)
+        return out
+
+    async def _cardmarket_quotes(self, card_id: str, catalog_lang: str, variant: str,
+                                 langs: list[str]) -> list[LangQuote]:
         card = await self._catalog.get_card(catalog_lang, card_id)
         if card is None:
             return [LangQuote(langs=langs, card_id=None, card_label=None, notes=["Carta non trovata nel catalogo."])]

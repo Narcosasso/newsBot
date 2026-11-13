@@ -22,7 +22,10 @@ TIME_ZONE="${TIME_ZONE:-Europe/Rome}"
 RUNTIME_SA="cardbot-runtime@${PROJECT_ID}.iam.gserviceaccount.com"
 SCHEDULER_SA="cardbot-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
 
-SECRETS=(WHATSAPP_TOKEN WHATSAPP_APP_SECRET WHATSAPP_VERIFY_TOKEN ANTHROPIC_API_KEY DATABASE_URL)
+SECRETS=(WHATSAPP_TOKEN WHATSAPP_APP_SECRET WHATSAPP_VERIFY_TOKEN DATABASE_URL
+         ANTHROPIC_API_KEY POKEMONPRICETRACKER_API_KEY)
+# Facoltativi: senza, il bot funziona lo stesso (foto con Google Vision, niente prezzi PSA 10).
+OPTIONAL_SECRETS=" ANTHROPIC_API_KEY POKEMONPRICETRACKER_API_KEY "
 PLAIN_VARS=(WHATSAPP_PHONE_NUMBER_ID WHATSAPP_API_VERSION ALLOWED_WA_IDS WHATSAPP_ALERT_TEMPLATE
             WHATSAPP_TEMPLATE_LANG PHOTO_READER VISION_MODEL VISION_EFFORT TIMEZONE TCGDEX_MAX_RPS)
 
@@ -96,16 +99,16 @@ cmd_deploy() {
   local envfile secrets_flag="" image
   envfile="$(mktemp)"
   write_env_yaml "$envfile"
-  # Collega solo i segreti presenti: ANTHROPIC_API_KEY è facoltativa (senza, il bot usa solo la ricerca testuale).
+  # Collega solo i segreti presenti; quelli facoltativi possono mancare.
   for name in "${SECRETS[@]}"; do
     if gc secrets versions describe latest --secret "$name" >/dev/null 2>&1; then
       secrets_flag+="${name}=${name}:latest,"
-    elif [ "$name" != "ANTHROPIC_API_KEY" ]; then
+    elif [[ "$OPTIONAL_SECRETS" != *" $name "* ]]; then
       echo "Manca il segreto $name: compilalo nel $ENV_FILE e lancia prima '$0 secrets'." >&2
       rm -f "$envfile"
       exit 1
     else
-      echo "ANTHROPIC_API_KEY assente: foto disattivate, funziona solo la ricerca testuale." >&2
+      echo "$name assente (facoltativo): funzione relativa disattivata." >&2
     fi
   done
   secrets_flag="${secrets_flag%,}"   # es. WHATSAPP_TOKEN=WHATSAPP_TOKEN:latest,…

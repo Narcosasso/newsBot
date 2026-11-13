@@ -11,10 +11,10 @@ from datetime import timedelta
 from sqlalchemy.orm import Session
 
 from cardbot.alerts.outbox import series_key
+from cardbot.alerts.tracking import target_tag
 from cardbot.alerts.rules import Threshold, metric
 from cardbot.bot.format import card_title, money, pct, trend_icon, when
 from cardbot.db import PriceSnapshot, Tracking, User
-from cardbot.langs import flag
 
 NOTEWORTHY_PCT = 1.0  # sotto l'1% una variazione non è una "novità"
 
@@ -50,16 +50,16 @@ def _target_row(session: Session, target, tz: str) -> _Row | None:
     d_week = _change(current, metric(week_ago)) if week_ago else None
     d_ref = _change(current, target.baseline)
 
-    flags = "".join(flag(x) for x in target.langs.split(","))
+    cur = target.currency or "EUR"
     parts = []
     if d_prev is not None:
         parts.append(f"ieri {pct(d_prev)}")
     if d_week is not None:
         parts.append(f"7 gg {pct(d_week)}")
-    line = f"{flags} *{money(current)}*" + (f"  {' · '.join(parts)}" if parts else "")
+    line = f"{target_tag(target)} *{money(current, cur)}*" + (f"  {' · '.join(parts)}" if parts else "")
     detail = None
     if d_ref is not None and target.baseline_at is not None and abs(d_ref) >= 0.05:
-        detail = f"↳ dal tuo riferimento ({money(target.baseline)} del {when(target.baseline_at, tz)[:5]}): {pct(d_ref)}"
+        detail = f"↳ dal tuo riferimento ({money(target.baseline, cur)} del {when(target.baseline_at, tz)[:5]}): {pct(d_ref)}"
     move = max((x for x in (d_prev, d_week, d_ref) if x is not None), key=abs, default=0.0)
     return _Row(line=line, detail=detail, move=move)
 

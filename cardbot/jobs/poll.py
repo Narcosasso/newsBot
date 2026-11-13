@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from cardbot.alerts.outbox import EvaluationReport, SendReport, Sender, evaluate_targets, send_pending
 from cardbot.alerts.sources import CardmarketPriceGuide, PriceData, TCGdexPrices
+from cardbot.alerts.tracking import PSA10
 from cardbot.db import JobState, Tracking, TrackingTarget
 
 log = logging.getLogger("cardbot.poll")
@@ -35,8 +36,9 @@ class PollReport:
         lines = [f"Esito: {self.status}"]
         if self.evaluation:
             e = self.evaluation
-            lines.append(f"Fonte {e.source} versione {e.version}: {e.targets} prezzi sorvegliati, "
-                         f"{e.snapshots_created} snapshot nuovi, {len(e.notifications)} notifiche")
+            lines.append(f"Fonte {e.source} versione {e.version}: {e.targets} prezzi sorvegliati "
+                         f"(di cui {e.graded_checked} PSA 10), {e.snapshots_created} snapshot nuovi, "
+                         f"{len(e.notifications)} notifiche")
             lines += [f"  • {n}" for n in e.notifications]
             if e.missing_products:
                 lines.append(f"  prodotti assenti dalla fonte: {sorted(set(e.missing_products))}")
@@ -58,7 +60,8 @@ async def _load_data(session: Session, guide: CardmarketPriceGuide, fallback: TC
         if fallback is None:
             raise
         targets = (session.query(TrackingTarget).join(Tracking)
-                   .filter(Tracking.active.is_(True), TrackingTarget.active.is_(True)).all())
+                   .filter(Tracking.active.is_(True), TrackingTarget.active.is_(True),
+                           TrackingTarget.source != PSA10).all())
         return await fallback.fetch_for([(t.catalog_lang, t.card_id, t.variant) for t in targets]), "fallback"
     if data is None:
         return None, "invariato (304)"
@@ -67,18 +70,38 @@ async def _load_data(session: Session, guide: CardmarketPriceGuide, fallback: TC
     return data, "nuova versione"
 
 
+async def _load_graded(session: Session, graded) -> dict | None:
+    """Prezzi PSA 10 delle carte seguite: una richiesta (2 crediti) per carta distinta."""
+    if graded is None or not graded.enabled:
+        return None
+    targets = (session.query(TrackingTarget).join(Tracking)
+               .filter(Tracking.active.is_(True), TrackingTarget.active.is_(True),
+                       TrackingTarget.source == PSA10).all())
+    out: dict = {}
+    for t in targets:
+        if t.external_id in out:
+            continue
+        language = "japanese" if t.catalog_lang == "ja" else "english"
+        try:
+            out[t.external_id] = await graded.by_id(t.external_id, language)
+        except Exception as exc:
+            log.warning("PSA 10 non disponibile per %s: %s", t.external_id, exc)
+    return out
+
+
 async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide, sender: Sender | None,
                    template: str, template_lang: str, fallback: TCGdexPrices | None = None,
-                   dry_run: bool = False, force: bool = False) -> PollReport:
+                   dry_run: bool = False, force: bool = False, graded=None) -> PollReport:
     with sessions() as session:
         data, status = await _load_data(session, guide, fallback, force)
+        graded_quotes = await _load_graded(session, graded)
         evaluation = None
-        if data is not None:
-            evaluation = evaluate_targets(session, data)
+        if data is not None or graded_quotes:
+            evaluation = evaluate_targets(session, data, graded_quotes)
             if dry_run:
                 session.rollback()
                 return PollReport(status=f"{status} (dry-run: nulla salvato né inviato)", evaluation=evaluation)
-            if data.source == guide.name:
+            if data is not None and data.source == guide.name:
                 state = session.get(JobState, STATE_KEY) or JobState(key=STATE_KEY)
                 state.value = {"version": data.version, "etag": data.etag}
                 session.merge(state)
@@ -96,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     from cardbot.config import get_settings
     from cardbot.db import make_engine, make_session_factory
     from cardbot.whatsapp.client import WhatsAppClient
+    from cardbot.prices.graded import GradedPrices
 
     parser = argparse.ArgumentParser(prog="cardbot.jobs.poll")
     parser.add_argument("--dry-run", action="store_true")
@@ -116,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         s.whatsapp_alert_template, s.whatsapp_template_lang,
         fallback=TCGdexPrices(TCGdexCatalog(s.tcgdex_base_url, s.tcgdex_max_rps)),
         dry_run=args.dry_run, force=args.force,
+        graded=GradedPrices(s.pokemonpricetracker_api_key) if s.pokemonpricetracker_api_key else None,
     ))
     print(report.summary())
     return 1 if report.sending and report.sending.failed else 0

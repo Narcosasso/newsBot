@@ -70,6 +70,20 @@ def _price_block(cm: CardmarketQuote) -> list[str]:
     return lines
 
 
+TREND_WORDS = {"up": 1.0, "down": -1.0}
+
+
+def graded_line(g) -> str:
+    """Riga PSA 10 (GradedQuote di PokemonPriceTracker)."""
+    if not g.has_sales:
+        return "🏅 PSA 10: nessuna vendita registrata finora"
+    parts = [f"🏅 PSA 10: *{money(g.price, g.currency)}*"]
+    if g.median:
+        parts.append(f"mediana {money(g.median, g.currency)}")
+    parts.append(f"{g.sales} vendite")
+    return " · ".join(parts) + f" {trend_icon(TREND_WORDS.get(g.trend or '', 0.0))}"
+
+
 def _tcgplayer_line(tp: TCGplayerQuote) -> str:
     return f"🇺🇸 Negli USA (TCGplayer): {money(tp.market, tp.currency)} · da {money(tp.low, tp.currency)}"
 
@@ -103,6 +117,11 @@ def format_quotes(title: str, variant: str, quotes: list[LangQuote], tz: str = "
             lines.append("Nessun prezzo su Cardmarket per questa versione.")
         if q.tcgplayer:
             lines.append(_tcgplayer_line(q.tcgplayer))
+        if q.graded is not None:
+            lines.append(graded_line(q.graded))
+            if not any(n.startswith("ℹ️ PSA 10") for n in notes):
+                notes.append("ℹ️ PSA 10: vendite eBay e Fanatics negli USA, in dollari (della stampa inglese per "
+                             "le lingue internazionali).")
         for note in q.notes:
             lines.append(note)
         lines.append("")
@@ -123,13 +142,14 @@ def format_quotes(title: str, variant: str, quotes: list[LangQuote], tz: str = "
 
 def format_tracking_list(trackings, user) -> str:
     from cardbot.alerts.rules import effective_threshold
+    from cardbot.alerts.tracking import target_tag
 
     lines = [f"📋 *Le carte che segui* ({len(trackings)})", ""]
     for i, t in enumerate(trackings, 1):
         name, detail = card_title(t.label, t.variant)
         lines.append(f"*{i}. {name}*")
         lines.append(detail)
-        prices = [f"{''.join(flag(x) for x in target.langs.split(','))} {money(target.baseline)}"
+        prices = [f"{target_tag(target)} {money(target.baseline, target.currency or 'EUR')}"
                   for target in t.targets if target.active]
         if prices:
             lines.append(" · ".join(prices))
@@ -142,7 +162,7 @@ def format_tracking_list(trackings, user) -> str:
 
 # --- guida ------------------------------------------------------------------------------------------
 
-def help_text(photos_enabled: bool = True, threshold: str = "10% e 1,00 €") -> str:
+def help_text(photos_enabled: bool = True, threshold: str = "10% e 1,00 €", graded: bool = False) -> str:
     search = [
         "🔎 *Cerca una carta*",
         "Scrivi codice e numero stampati in basso sulla carta:",
@@ -152,13 +172,17 @@ def help_text(photos_enabled: bool = True, threshold: str = "10% e 1,00 €") ->
     ]
     if photos_enabled:
         search.append("• oppure mandami una 📸 *foto* della carta")
-    return "\n".join(search + [
+    cards = [
         "",
         "📋 *Le tue carte*",
         "• *lista* · le carte che segui",
         "• *novità* · come si sono mossi i prezzi",
         "• *stop 2* · non seguire più la carta 2",
         "• *lingue 2 ita jap* · cambia le lingue",
+    ]
+    if graded:
+        cards.append("• *psa 2* · segui anche il prezzo PSA 10 della carta 2")
+    return "\n".join(search + cards + [
         f"• *soglia 15%* · quando avvisarti (ora: ±{threshold})",
         "",
         "⚙️ *Altro*",
@@ -167,7 +191,7 @@ def help_text(photos_enabled: bool = True, threshold: str = "10% e 1,00 €") ->
     ])
 
 
-def welcome_text(photos_enabled: bool = True, threshold: str = "10% e 1,00 €") -> str:
+def welcome_text(photos_enabled: bool = True, threshold: str = "10% e 1,00 €", graded: bool = False) -> str:
     return ("👋 *Ciao! Sono Cardbot.*\n"
             "Ti dico quanto valgono le tue carte Pokémon, lingua per lingua, e ti avviso quando il prezzo "
-            "cambia.\n\n" + help_text(photos_enabled, threshold))
+            "cambia.\n\n" + help_text(photos_enabled, threshold, graded))

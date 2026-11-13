@@ -1,0 +1,179 @@
+{
+ "data": {
+  "id": "696e440852d86878bfd57fa9",
+  "tcgPlayerId": "502558",
+  "setId": 23237,
+  "setName": "SV: Scarlet & Violet 151",
+  "name": "Charizard ex - 006/165",
+  "cardNumber": "006/165",
+  "rarity": "Double Rare",
+  "prices": {
+   "market": 8.35,
+   "low": 3.95,
+   "primaryPrinting": "Holofoil",
+   "lastUpdated": "2026-11-12T12:03:35.634Z"
+  },
+  "ebay": {
+   "updatedAt": "2026-11-12T15:23:14.267Z",
+   "salesByGrade": {
+    "psa10": {
+     "count": 89,
+     "totalValue": 8321.37,
+     "averagePrice": 95.64793103448277,
+     "medianPrice": 90,
+     "minPrice": 27.6,
+     "maxPrice": 170,
+     "marketPrice7Day": 58.99,
+     "marketPriceMedian7Day": 58.99,
+     "dailyVolume7Day": 0.14285714285714285,
+     "marketTrend": "up",
+     "lastMarketUpdate": "2026-11-12T15:23:14.262Z",
+     "lastSaleDate": "2026-11-11T00:00:00.000Z",
+     "smartMarketPrice": {
+      "price": 50.14,
+      "confidence": "high",
+      "method": "30day_filtered_weighted",
+      "daysUsed": 30
+     },
+     "salesBySource": {
+      "ebay": 71,
+      "fanatics": 18
+     },
+     "labels": null
+    },
+    "cgc10": {
+     "count": 58,
+     "totalValue": 1855.15,
+     "averagePrice": 34.354629629629635,
+     "medianPrice": 30,
+     "minPrice": 13.2,
+     "maxPrice": 74,
+     "marketPrice7Day": 36.1,
+     "marketPriceMedian7Day": 36.1,
+     "dailyVolume7Day": 0.2857142857142857,
+     "marketTrend": "up",
+     "lastMarketUpdate": "2026-11-12T15:23:14.262Z",
+     "lastSaleDate": "2026-11-09T04:27:54.000Z",
+     "smartMarketPrice": {
+      "price": 29.88,
+      "confidence": "medium",
+      "method": "14day_filtered_weighted",
+      "daysUsed": 14
+     },
+     "salesBySource": {
+      "ebay": 22,
+      "fanatics": 36
+     },
+     "labels": {
+      "unlabeled": {
+       "count": 10,
+       "totalValue": 387.66,
+       "averagePrice": 38.766000000000005,
+       "medianPrice": 37.495000000000005,
+       "minPrice": 29.99,
+       "maxPrice": 51,
+       "marketPrice7Day": null,
+       "marketPriceMedian7Day": null,
+       "dailyVolume7Day": 0,
+       "marketTrend": "stable",
+       "lastMarketUpdate": "2026-11-12T15:23:14.262Z",
+       "lastSaleDate": "2026-10-20T00:00:00.000Z",
+       "smartMarketPrice": {
+        "price": 32.5,
+        "confidence": "medium",
+        "method": "90day_filtered_weighted",
+        "daysUsed": 90
+       },
+       "salesBySource": {
+        "ebay": 10
+       },
+       "labels": null
+      },
+      "gemMint": {
+       "count": 34,
+       "totalValue": 797.3,
+       "averagePrice": 26.576666666666664,
+       "medianPrice": 25.6,
+       "minPrice": 13.2,
+       "maxPrice": 42,
+       "marketPrice7Day": null,
+       "marketPriceMedian7Day": null,
+       "dailyVolume7Day": 0,
+       "marketTrend": "stable",
+       "lastMarketUpdate": "2026-11-12T15:23:14.262Z",
+       "lastSaleDate": "2026-11-05T14:13:23.000Z",
+       "smartMarketPrice": {
+        "price": 26.4,
+        "confidence": "high",
+        "method": "30day_filtered_weighted",
+        "daysUsed": 30
+       },
+       "salesBySource": {
+        "ebay": 6,
+        "fanatics": 28
+       },
+       "labels": null
+      },
+      "pristine": {
+       "count": 14,
+       "totalValue": 839.19,
+       "averagePrice": 64.55307692307693,
+       "medianPrice": 50,
+       "minPrice": 25,
+       "maxPrice": 149.99,
+       "marketPrice7Day": 36.1,
+       "marketPriceMedian7Day": 36.1,
+       "dailyVolume7Day": 0.2857142857142857,
+       "marketTrend": "down",
+       "lastMarketUpdate": "2026-11-12T15:23:14.262Z",
+       "lastSaleDate": "2026-11-09T04:27:54.000Z",
+       "smartMarketPrice": {
+        "price": 33.48,
+        "confidence": "medium",
+        "method": "30day_filtered_weighted",
+        "daysUsed": 30
+       },
+       "salesBySource": {
+        "ebay": 6,
+        "fanatics": 8
+       },
+       "labels": null
+      }
+     }
+    },
+    "psa9": {
+     "count": 89,
+     "totalValue": 1799.35,
+     "averagePrice": 21.42083333333333,
+     "medianPrice": 22,
+     "minPrice": 8.5,
+     "maxPrice": 37.72,
+     "marketPrice7Day": 29.99,
+     "marketPriceMedian7Day": 29.99,
+     "dailyVolume7Day": 0.14285714285714285,
+     "marketTrend": "up",
+     "lastMarketUpdate": "2026-11-12T15:23:14.263Z",
+     "lastSaleDate": "2026-11-07T00:00:00.000Z",
+     "smartMarketPrice": {
+      "price": 27.49,
+      "confidence": "medium",
+      "method": "30day_filtered_weighted",
+      "daysUsed": 30
+     },
+     "salesBySource": {
+      "ebay": 61,
+      "fanatics": 28
+     },
+     "labels": null
+    }
+   },
+   "totalSales": 342
+  }
+ },
+ "metadata": {
+  "total": 1,
+  "count": 1,
+  "limit": 1,
+  "language": "english"
+ }
+}

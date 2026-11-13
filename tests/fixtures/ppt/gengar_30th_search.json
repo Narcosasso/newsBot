@@ -1,0 +1,180 @@
+{
+ "data": [
+  {
+   "id": "6aabd6579d8e8ea4ae6cb166",
+   "tcgPlayerId": "717610",
+   "setId": 24722,
+   "setName": "ME: 30th Celebration",
+   "name": "Gengar ex - 154/128",
+   "cardNumber": "154/128",
+   "rarity": "Special Illustration Rare",
+   "prices": {
+    "market": 48.32,
+    "low": 43.81,
+    "primaryPrinting": "Holofoil",
+    "lastUpdated": "2026-11-12T12:02:02.619Z"
+   },
+   "ebay": {
+    "updatedAt": "2026-11-12T16:12:19.496Z",
+    "salesByGrade": {
+     "cgc10": {
+      "count": 81,
+      "totalValue": 24385.93,
+      "averagePrice": 308.6826582278481,
+      "medianPrice": 301.99,
+      "minPrice": 105.6,
+      "maxPrice": 676,
+      "marketPrice7Day": 227.2076923076923,
+      "marketPriceMedian7Day": 264,
+      "dailyVolume7Day": 1.8571428571428572,
+      "marketTrend": "down",
+      "lastMarketUpdate": "2026-11-12T16:12:19.493Z",
+      "lastSaleDate": "2026-11-12T00:30:12.000Z",
+      "smartMarketPrice": {
+       "price": 264,
+       "confidence": "medium",
+       "method": "7day_filtered_weighted",
+       "daysUsed": 7
+      },
+      "salesBySource": {
+       "ebay": 63,
+       "fanatics": 18
+      },
+      "labels": {
+       "pristine": {
+        "count": 44,
+        "totalValue": 15789.48,
+        "averagePrice": 385.10926829268294,
+        "medianPrice": 390,
+        "minPrice": 264,
+        "maxPrice": 525,
+        "marketPrice7Day": 283.14285714285717,
+        "marketPriceMedian7Day": 265,
+        "dailyVolume7Day": 1,
+        "marketTrend": "down",
+        "lastMarketUpdate": "2026-11-12T16:12:19.493Z",
+        "lastSaleDate": "2026-11-12T00:30:12.000Z",
+        "smartMarketPrice": {
+         "price": 264.5,
+         "confidence": "high",
+         "method": "7day_filtered_weighted",
+         "daysUsed": 7
+        },
+        "salesBySource": {
+         "ebay": 32,
+         "fanatics": 12
+        },
+        "labels": null
+       },
+       "unlabeled": {
+        "count": 21,
+        "totalValue": 3565.51,
+        "averagePrice": 198.0838888888889,
+        "medianPrice": 182.5,
+        "minPrice": 129.5,
+        "maxPrice": 380,
+        "marketPrice7Day": null,
+        "marketPriceMedian7Day": null,
+        "dailyVolume7Day": 0,
+        "marketTrend": "down",
+        "lastMarketUpdate": "2026-11-12T16:12:19.493Z",
+        "lastSaleDate": "2026-10-31T00:00:00.000Z",
+        "smartMarketPrice": {
+         "price": 139.75,
+         "confidence": "medium",
+         "method": "14day_filtered_weighted",
+         "daysUsed": 14
+        },
+        "salesBySource": {
+         "ebay": 20,
+         "fanatics": 1
+        },
+        "labels": null
+       },
+       "gemMint": {
+        "count": 16,
+        "totalValue": 2653.07,
+        "averagePrice": 176.87133333333335,
+        "medianPrice": 161,
+        "minPrice": 105.6,
+        "maxPrice": 256.29,
+        "marketPrice7Day": 161.95000000000002,
+        "marketPriceMedian7Day": 155.1,
+        "dailyVolume7Day": 0.8571428571428571,
+        "marketTrend": "down",
+        "lastMarketUpdate": "2026-11-12T16:12:19.493Z",
+        "lastSaleDate": "2026-11-10T00:00:00.000Z",
+        "smartMarketPrice": {
+         "price": 150,
+         "confidence": "high",
+         "method": "7day_filtered_weighted",
+         "daysUsed": 7
+        },
+        "salesBySource": {
+         "ebay": 11,
+         "fanatics": 5
+        },
+        "labels": null
+       }
+      }
+     },
+     "psa10": {
+      "count": 64,
+      "totalValue": 44681.27,
+      "averagePrice": 732.4798360655737,
+      "medianPrice": 630,
+      "minPrice": 344.25,
+      "maxPrice": 1325,
+      "marketPrice7Day": 588.9054545454545,
+      "marketPriceMedian7Day": 567.5,
+      "dailyVolume7Day": 3.142857142857143,
+      "marketTrend": "down",
+      "lastMarketUpdate": "2026-11-12T16:12:19.493Z",
+      "lastSaleDate": "2026-11-10T00:00:00.000Z",
+      "smartMarketPrice": {
+       "price": 555,
+       "confidence": "high",
+       "method": "7day_filtered_weighted",
+       "daysUsed": 7
+      },
+      "salesBySource": {
+       "ebay": 64
+      },
+      "labels": null
+     },
+     "psa9": {
+      "count": 11,
+      "totalValue": 1466,
+      "averagePrice": 133.27272727272728,
+      "medianPrice": 127.5,
+      "minPrice": 89,
+      "maxPrice": 182.5,
+      "marketPrice7Day": 110.5,
+      "marketPriceMedian7Day": 109.5,
+      "dailyVolume7Day": 0.8571428571428571,
+      "marketTrend": "down",
+      "lastMarketUpdate": "2026-11-12T16:12:19.494Z",
+      "lastSaleDate": "2026-11-08T00:00:00.000Z",
+      "smartMarketPrice": {
+       "price": 101.75,
+       "confidence": "high",
+       "method": "7day_filtered_weighted",
+       "daysUsed": 7
+      },
+      "salesBySource": {
+       "ebay": 11
+      },
+      "labels": null
+     }
+    },
+    "totalSales": 268
+   }
+  }
+ ],
+ "metadata": {
+  "total": 1,
+  "count": 1,
+  "limit": 1,
+  "language": "english"
+ }
+}

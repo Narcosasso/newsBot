@@ -21,9 +21,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from cardbot.alerts.rules import Change, effective_threshold, evaluate, metric
 from cardbot.alerts.sources import PriceData
+from cardbot.alerts.tracking import PSA10, target_tag
 from cardbot.bot.format import money, pct, trend_icon
 from cardbot.db import Notification, PriceSnapshot, Tracking, TrackingTarget, User, utcnow
-from cardbot.langs import flag
 from cardbot.prices.models import cardmarket_quote
 from cardbot.variants import LABELS_IT
 
@@ -35,17 +35,20 @@ MAX_FAILED_ATTEMPTS_AGE = timedelta(days=3)
 
 
 def series_key(target: TrackingTarget) -> str:
+    if target.source == PSA10:
+        return f"ppt:psa10:{target.external_id}"
     return f"cm:{target.id_product}:{target.variant}:{'s' if target.shared_product else 'd'}"
+
 
 
 def change_line(tracking: Tracking, target: TrackingTarget, change: Change) -> str:
     """Una riga sola (i parametri dei template WhatsApp non ammettono a capo)."""
     name, _, rest = tracking.label.partition(" · ")
-    flags = "".join(flag(x) for x in target.langs.split(","))
     detail = f"{rest}, {LABELS_IT.get(tracking.variant, tracking.variant)}" if rest else \
         LABELS_IT.get(tracking.variant, tracking.variant)
-    return (f"{trend_icon(change.pct)} {name} ({detail}) {flags} {money(change.old)} → "
-            f"{money(change.new)} ({pct(change.pct)})")
+    cur = target.currency or "EUR"
+    return (f"{trend_icon(change.pct)} {name} ({detail}) {target_tag(target)} {money(change.old, cur)} → "
+            f"{money(change.new, cur)} ({pct(change.pct)})")
 
 
 @dataclass
@@ -55,7 +58,28 @@ class EvaluationReport:
     targets: int = 0
     snapshots_created: int = 0
     notifications: list[str] = field(default_factory=list)
-    missing_products: list[int] = field(default_factory=list)
+    missing_products: list = field(default_factory=list)
+    graded_checked: int = 0
+
+
+def _graded_snapshot(session: Session, graded: dict, target: TrackingTarget, report: EvaluationReport,
+                     cache: dict[str, PriceSnapshot]) -> PriceSnapshot | None:
+    key = series_key(target)
+    if key in cache:
+        return cache[key]
+    q = graded.get(target.external_id)
+    if q is None or not q.has_sales:
+        report.missing_products.append(f"PSA 10 {target.external_id}")
+        return None
+    snap = session.query(PriceSnapshot).filter_by(series=key, source_version=q.version).one_or_none()
+    if snap is None:
+        snap = PriceSnapshot(series=key, source="pokemonpricetracker", source_version=q.version,
+                             source_updated_at=q.updated, trend=q.price, avg=q.median)
+        session.add(snap)
+        session.flush()
+        report.snapshots_created += 1
+    cache[key] = snap
+    return snap
 
 
 def _snapshot(session: Session, data: PriceData, target: TrackingTarget, report: EvaluationReport,
@@ -80,15 +104,27 @@ def _snapshot(session: Session, data: PriceData, target: TrackingTarget, report:
     return snap
 
 
-def evaluate_targets(session: Session, data: PriceData) -> EvaluationReport:
-    """Salva gli snapshot e crea le notifiche dovute. Non fa commit: lo decide il chiamante."""
-    report = EvaluationReport(source=data.source, version=data.version)
+def evaluate_targets(session: Session, data: PriceData | None, graded: dict | None = None) -> EvaluationReport:
+    """Salva gli snapshot e crea le notifiche dovute. Non fa commit: lo decide il chiamante.
+
+    data: price guide Cardmarket (None se invariato); graded: {id TCGplayer: GradedQuote} per le PSA 10.
+    """
+    report = EvaluationReport(source=data.source if data else "-", version=data.version if data else "-")
     cache: dict[str, PriceSnapshot] = {}
     targets = (session.query(TrackingTarget).join(Tracking)
                .filter(Tracking.active.is_(True), TrackingTarget.active.is_(True)).all())
-    report.targets = len(targets)
     for target in targets:
-        snap = _snapshot(session, data, target, report, cache)
+        if target.source == PSA10:
+            if graded is None:
+                continue
+            report.targets += 1
+            report.graded_checked += 1
+            snap = _graded_snapshot(session, graded, target, report, cache)
+        else:
+            if data is None:
+                continue
+            report.targets += 1
+            snap = _snapshot(session, data, target, report, cache)
         if snap is None:
             continue
         current = metric(snap)  # stesso criterio usato per il valore di riferimento

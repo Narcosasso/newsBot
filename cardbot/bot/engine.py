@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from cardbot.alerts.news import build_news
 from cardbot.alerts.rules import Threshold, effective_threshold
-from cardbot.alerts.tracking import target_specs, upsert_tracking
+from cardbot.alerts.tracking import CARDMARKET, PSA10, graded_spec, graded_specs, target_specs, upsert_tracking
 from cardbot.bot.commands import Command, parse_command
-from cardbot.bot.format import format_quotes, format_tracking_list, help_text, welcome_text
+from cardbot.bot.format import format_quotes, format_tracking_list, graded_line, help_text, welcome_text
 from cardbot.db import Tracking, get_or_create_user, load_state, save_state, utcnow
 from cardbot.langs import LANGS, full_name, parse_langs
 from cardbot.prices.service import PriceService
@@ -24,6 +24,7 @@ from cardbot.variants import LABELS_IT, choose_variant
 log = logging.getLogger(__name__)
 
 YES = {"notify:yes", "si", "sì", "si avvisami", "sì, avvisami", "sì avvisami", "ok", "yes"}
+WITH_PSA = {"notify:psa", "sì + psa 10", "si + psa 10", "sì + psa", "si + psa", "anche psa", "psa"}
 NO = {"notify:no", "no", "no grazie", "no, grazie"}
 NUMBERS = ["1️⃣", "2️⃣", "3️⃣"]
 
@@ -84,7 +85,8 @@ class Engine:
             state = load_state(session, user)
             try:
                 if created:
-                    await self._out.send_text(user.wa_id, welcome_text(self._photos, self._threshold_text(user)))
+                    await self._out.send_text(user.wa_id, welcome_text(self._photos, self._threshold_text(user),
+                                                                       self._prices.graded_enabled))
                     command = parse_command(msg.text or "") if msg.kind == "text" else None
                     if command is not None and command.kind == "help":
                         session.commit()
@@ -126,7 +128,7 @@ class Engine:
             await self._on_variant_reply(user, state, lowered)
         elif state.stage == "awaiting_langs":
             await self._on_langs_reply(user, state, reply)
-        elif state.stage == "awaiting_notify" and lowered in YES | NO:
+        elif state.stage == "awaiting_notify" and lowered in YES | NO | WITH_PSA:
             await self._on_notify_reply(session, user, state, lowered)
         elif query:
             await self._on_text_query(user, state, query)
@@ -267,13 +269,18 @@ class Engine:
         await self._out.send_text(user.wa_id, text)
         user.langs = ",".join(langs)
         specs = target_specs(quotes)
-        next_payload = {"selected": payload["selected"], "variant": variant, "langs": langs, "targets": specs}
-        if not specs:
+        gspecs = graded_specs(quotes)
+        next_payload = {"selected": payload["selected"], "variant": variant, "langs": langs, "targets": specs,
+                        "graded_targets": gspecs}
+        if not specs and not gspecs:
             save_state(state, "idle", next_payload)
             return
         save_state(state, "awaiting_notify", next_payload)
-        await self._out.send_buttons(user.wa_id, "🔔 Vuoi che ti avvisi quando il prezzo cambia?",
-                                     [("notify:yes", "Sì, avvisami"), ("notify:no", "No, grazie")])
+        buttons = [("notify:yes", "Sì, avvisami")] if specs else []
+        if gspecs:
+            buttons.append(("notify:psa", "Sì + PSA 10" if specs else "Sì, PSA 10"))
+        buttons.append(("notify:no", "No, grazie"))
+        await self._out.send_buttons(user.wa_id, "🔔 Vuoi che ti avvisi quando il prezzo cambia?", buttons)
 
     async def _on_notify_reply(self, session, user, state, reply: str) -> None:
         payload = dict(state.payload)
@@ -283,12 +290,22 @@ class Engine:
             return
         cand = Candidate(**payload["selected"])
         name, _ = _name_and_set(cand.short())
+        with_psa = reply in WITH_PSA
+        specs = list(payload.get("targets") or [])
+        manage = {CARDMARKET}
+        if with_psa:
+            specs += payload.get("graded_targets") or []
+            manage.add(PSA10)
         result = upsert_tracking(session, user, card_id=cand.card_id, catalog_lang=cand.catalog_lang,
                                  variant=payload["variant"], label=cand.short(), langs=payload["langs"],
-                                 specs=payload["targets"])
+                                 specs=specs, manage=frozenset(manage))
         th = effective_threshold(user, result.tracking)
+        where = f" in {_langs_text(result.tracked_langs)}" if result.tracked_langs else ""
         lines = [f"✅ {'Fatto!' if result.created else 'Aggiornato!'} Seguo *{name}* "
-                 f"({LABELS_IT[payload['variant']]}) in {_langs_text(result.tracked_langs)}.",
+                 f"({LABELS_IT[payload['variant']]}){where}."]
+        if with_psa and result.graded:
+            lines.append("🏅 Seguo anche il prezzo *PSA 10* (vendite USA, in dollari).")
+        lines += [
                  f"🔔 Ti scrivo quando il prezzo sale o scende di almeno {th.describe()}.",
                  "⏰ Controllo i prezzi ogni mattina."]
         if result.untracked_langs:
@@ -318,7 +335,8 @@ class Engine:
 
     async def _on_command(self, session, user, state, cmd: Command) -> None:
         if cmd.kind == "help":
-            await self._out.send_text(user.wa_id, help_text(self._photos, self._threshold_text(user)))
+            await self._out.send_text(user.wa_id, help_text(self._photos, self._threshold_text(user),
+                                                            self._prices.graded_enabled))
         elif cmd.kind == "supported_langs":
             names = "\n".join(f"• {full_name(c)} · *{LANGS[c][0].lower()}*" for c in LANGS)
             await self._out.send_text(user.wa_id, f"🌍 *Lingue che conosco*\n{names}")
@@ -329,6 +347,8 @@ class Engine:
             await self._out.send_text(user.wa_id, format_tracking_list(trackings, user) if trackings else NO_CARDS)
         elif cmd.kind == "news":
             await self._out.send_text(user.wa_id, build_news(session, user, self._tz))
+        elif cmd.kind == "psa":
+            await self._cmd_psa(session, user, cmd)
         elif cmd.kind == "stop":
             await self._cmd_stop(session, user, cmd)
         elif cmd.kind == "langs":
@@ -417,3 +437,36 @@ class Engine:
         th = Threshold(pct=tracking.threshold_pct, eur=tracking.threshold_eur)
         await self._out.send_text(user.wa_id, f"✅ Per *{name}* ti avviso quando il prezzo cambia di almeno "
                                               f"*±{th.describe()}*.")
+
+    async def _cmd_psa(self, session, user, cmd: Command) -> None:
+        if not self._prices.graded_enabled:
+            await self._out.send_text(user.wa_id, "I prezzi PSA 10 non sono attivi: serve la chiave "
+                                                  "POKEMONPRICETRACKER_API_KEY nella configurazione del bot.")
+            return
+        tracking = await self._pick(session, user, cmd.index)
+        if tracking is None:
+            return
+        name, _ = _name_and_set(tracking.label)
+        langs = tracking.langs.split(",")
+        if cmd.reset:
+            upsert_tracking(session, user, card_id=tracking.card_id, catalog_lang=tracking.catalog_lang,
+                            variant=tracking.variant, label=tracking.label, langs=langs, specs=[],
+                            manage=frozenset({PSA10}))
+            await self._out.send_text(user.wa_id, f"🔕 Non seguo più il prezzo PSA 10 di *{name}*.")
+            return
+        g = await self._prices.graded_quote(tracking.card_id, tracking.catalog_lang, tracking.variant)
+        if g is None:
+            await self._out.send_text(user.wa_id, f"😕 Non trovo prezzi PSA 10 per *{name}*.")
+            return
+        if not g.has_sales:
+            await self._out.send_text(user.wa_id, f"😕 *{name}* non ha ancora vendite PSA 10: non c'è un prezzo "
+                                                  "da seguire. Riprova più avanti.")
+            return
+        upsert_tracking(session, user, card_id=tracking.card_id, catalog_lang=tracking.catalog_lang,
+                        variant=tracking.variant, label=tracking.label, langs=langs,
+                        specs=[graded_spec(langs, tracking.card_id, tracking.catalog_lang, g)],
+                        manage=frozenset({PSA10}))
+        th = effective_threshold(user, tracking)
+        await self._out.send_text(user.wa_id, f"✅ Seguo anche il prezzo PSA 10 di *{name}*.\n{graded_line(g)}\n"
+                                              f"🔔 Ti scrivo quando cambia di almeno "
+                                              f"{th.describe().replace('€', '$')}.")

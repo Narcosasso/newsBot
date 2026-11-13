@@ -67,16 +67,23 @@ class Tracking(Base):
 
 
 class TrackingTarget(Base):
-    """Un prezzo da sorvegliare: un prodotto Cardmarket per un gruppo di lingue (es. ITA+ENG, oppure JAP)."""
+    """Un prezzo da sorvegliare.
+
+    source="cardmarket": un prodotto Cardmarket per un gruppo di lingue (es. ITA+ENG, oppure JAP), in euro.
+    source="psa10": il prezzo PSA 10 di PokemonPriceTracker (external_id = ID TCGplayer), in dollari.
+    """
 
     __tablename__ = "tracking_targets"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tracking_id: Mapped[int] = mapped_column(ForeignKey("trackings.id"), index=True)
+    source: Mapped[str] = mapped_column(String(16), default="cardmarket", server_default="cardmarket")
     langs: Mapped[str] = mapped_column(String(64))
     card_id: Mapped[str] = mapped_column(String(64))           # carta da cui viene il prezzo (può essere l'equivalente JP)
     catalog_lang: Mapped[str] = mapped_column(String(8))
-    id_product: Mapped[int] = mapped_column(Integer, index=True)
+    id_product: Mapped[int | None] = mapped_column(Integer, index=True)  # Cardmarket
+    external_id: Mapped[str | None] = mapped_column(String(64))           # PSA 10: ID TCGplayer
+    currency: Mapped[str] = mapped_column(String(3), default="EUR", server_default="EUR")
     variant: Mapped[str] = mapped_column(String(16))
     shared_product: Mapped[bool] = mapped_column(Boolean, default=True)
     aggregated: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     photo_reader: str = "google"
     google_vision_api_key: str = ""  # solo per provare in locale; su Cloud Run si usa il service account
     anthropic_api_key: str = ""
+    # --- Prezzi PSA 10 (PokemonPriceTracker, piano gratuito: 100 crediti/giorno). Vuoto = niente PSA 10 ---
+    pokemonpricetracker_api_key: str = ""
     vision_model: str = "claude-opus-5-5"
     vision_effort: str = "medium"
 

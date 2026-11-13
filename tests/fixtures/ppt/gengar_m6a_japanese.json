@@ -1,0 +1,104 @@
+{
+ "data": [
+  {
+   "id": "6ab299d9d6b0c3de91eb94d1",
+   "tcgPlayerId": "719554",
+   "setId": 24721,
+   "setName": "M6a: MEGA Expansion 30th Celebration",
+   "name": "Gengar ex - 131/103",
+   "cardNumber": "131/103",
+   "rarity": "Special Art Rare",
+   "prices": {
+    "market": 44.41,
+    "low": 0,
+    "primaryPrinting": "Holofoil",
+    "lastUpdated": "2026-11-12T18:53:42.710Z"
+   },
+   "ebay": {
+    "updatedAt": "2026-11-11T17:12:08.750Z",
+    "salesByGrade": {
+     "cgc10": {
+      "count": 21,
+      "totalValue": 2138.5,
+      "averagePrice": 101.83333333333333,
+      "medianPrice": 80,
+      "minPrice": 44.4,
+      "maxPrice": 202,
+      "marketPrice7Day": 80.00714285714285,
+      "marketPriceMedian7Day": 79,
+      "dailyVolume7Day": 2,
+      "marketTrend": "down",
+      "lastMarketUpdate": "2026-11-11T17:12:08.749Z",
+      "lastSaleDate": "2026-11-10T22:51:19.000Z",
+      "smartMarketPrice": {
+       "price": 79,
+       "confidence": "high",
+       "method": "7day_filtered_weighted",
+       "daysUsed": 7
+      },
+      "salesBySource": {
+       "fanatics": 21
+      },
+      "labels": {
+       "pristine": {
+        "count": 10,
+        "totalValue": 1358,
+        "averagePrice": 135.8,
+        "medianPrice": 150,
+        "minPrice": 86.4,
+        "maxPrice": 202,
+        "marketPrice7Day": 104.1,
+        "marketPriceMedian7Day": 90,
+        "dailyVolume7Day": 0.5714285714285714,
+        "marketTrend": "down",
+        "lastMarketUpdate": "2026-11-11T17:12:08.749Z",
+        "lastSaleDate": "2026-11-09T04:28:08.000Z",
+        "smartMarketPrice": {
+         "price": 86.4,
+         "confidence": "medium",
+         "method": "7day_filtered_weighted",
+         "daysUsed": 7
+        },
+        "salesBySource": {
+         "fanatics": 10
+        },
+        "labels": null
+       },
+       "gemMint": {
+        "count": 11,
+        "totalValue": 780.5,
+        "averagePrice": 70.95454545454545,
+        "medianPrice": 75,
+        "minPrice": 44.4,
+        "maxPrice": 80,
+        "marketPrice7Day": 70.37,
+        "marketPriceMedian7Day": 75,
+        "dailyVolume7Day": 1.4285714285714286,
+        "marketTrend": "down",
+        "lastMarketUpdate": "2026-11-11T17:12:08.749Z",
+        "lastSaleDate": "2026-11-10T22:51:19.000Z",
+        "smartMarketPrice": {
+         "price": 75,
+         "confidence": "high",
+         "method": "7day_filtered_weighted",
+         "daysUsed": 7
+        },
+        "salesBySource": {
+         "fanatics": 11
+        },
+        "labels": null
+       }
+      }
+     }
+    },
+    "totalSales": 25
+   }
+  }
+ ],
+ "metadata": {
+  "total": 1,
+  "count": 1,
+  "limit": 1,
+  "language": "japanese"
+ }
+}

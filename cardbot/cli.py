@@ -63,7 +63,10 @@ async def _converse(vision, first: Incoming) -> int:
     settings = get_settings()
     sessions = make_session_factory(make_engine("sqlite://"))
     catalog = TCGdexCatalog(settings.tcgdex_base_url, settings.tcgdex_max_rps)
-    engine = Engine(sessions, ConsoleMessenger(), vision, CardMatcher(catalog), PriceService(catalog),
+    from cardbot.app import _graded
+
+    engine = Engine(sessions, ConsoleMessenger(), vision, CardMatcher(catalog),
+                    PriceService(catalog, graded=_graded(settings)),
                     timezone=settings.timezone)
     print(f"tu> {first.text or '[foto]'}")
     await engine.handle(first)

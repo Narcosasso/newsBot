@@ -31,6 +31,13 @@ class Container:
     engine: Engine
 
 
+def _graded(settings: Settings):
+    if not settings.pokemonpricetracker_api_key:
+        return None
+    from cardbot.prices.graded import GradedPrices
+    return GradedPrices(settings.pokemonpricetracker_api_key)
+
+
 def build_container(settings: Settings) -> Container:
     sessions = make_session_factory(make_engine(settings.database_url))
     whatsapp = WhatsAppClient(settings.whatsapp_token, settings.whatsapp_phone_number_id,
@@ -39,7 +46,7 @@ def build_container(settings: Settings) -> Container:
     engine = Engine(
         sessions, whatsapp,
         make_reader(settings),
-        CardMatcher(catalog), PriceService(catalog), timezone=settings.timezone,
+        CardMatcher(catalog), PriceService(catalog, graded=_graded(settings)), timezone=settings.timezone,
     )
     return Container(settings, sessions, whatsapp, engine)
 

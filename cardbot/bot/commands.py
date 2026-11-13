@@ -8,6 +8,7 @@
   soglia <n> 20%              soglia solo per la carta n
   soglia <n> predefinita      la carta n torna alla soglia generale
   novità                      come si sono mossi i prezzi delle carte seguite
+  psa <n> | psa <n> stop      segui (o smetti di seguire) anche il prezzo PSA 10 della carta n
   comandi | aiuto | /comandi  guida (lo "/" iniziale è facoltativo per tutti i comandi)
 """
 
@@ -30,7 +31,7 @@ _EUR = re.compile(r"^(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€|eur|euro)$|^€\s*(\d
 
 @dataclass
 class Command:
-    kind: str  # list | news | stop | langs | threshold_show | threshold | help | supported_langs | error
+    kind: str  # list | news | psa | stop | langs | threshold_show | threshold | help | supported_langs | error
     index: int | None = None
     all: bool = False
     langs: list[str] = field(default_factory=list)
@@ -70,6 +71,16 @@ def parse_command(text: str) -> Command | None:
         return Command("list")
     if head in NEWS_WORDS and not rest:
         return Command("news")
+
+    if head == "psa":
+        index = int(rest[0]) if rest and rest[0].isdigit() else None
+        tail = [t.lower() for t in (rest[1:] if index is not None else rest)]
+        if tail and tail[0] in {"stop", "no", "off", "togli"}:
+            return Command("psa", index=index, reset=True)
+        if tail and tail[0] != "10":
+            return Command("error", error="Scrivi *psa 1* per seguire anche il prezzo PSA 10 della carta 1, "
+                                          "oppure *psa 1 stop* per smettere.")
+        return Command("psa", index=index)
 
     if head == "stop":
         if not rest:

@@ -62,6 +62,7 @@ class LangQuote:
     notes: list[str] = field(default_factory=list)
     catalog_lang: str | None = None  # catalogo TCGdex della carta da cui viene il prezzo
     shared_product: bool = True      # la variante condivide il prodotto Cardmarket (serve per rileggere i campi)
+    graded: Any = None               # GradedQuote (PSA 10) se disponibile
 
 
 def _f(value: Any) -> float | None:

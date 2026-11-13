@@ -17,6 +17,7 @@ Il bot usa solo **fonti gratuite**: i prezzi Cardmarket e TCGplayer inclusi nel 
 | ENG (in più) | TCGplayer: market e low in USD (mercato USA, quasi solo carte inglesi) | Sì, indicativamente |
 | JAP | Cardmarket del prodotto giapponese | **Sì**: le carte giapponesi sono prodotti separati |
 | KOR, CIN | Nessun prezzo: non esistono fonti gratuite | — |
+| **PSA 10** (facoltativo) | [PokemonPriceTracker](https://www.pokemonpricetracker.com): prezzo di mercato, mediana e numero di vendite eBay e Fanatics Collect negli USA, in dollari | Della stampa inglese (o giapponese per le carte giapponesi) |
 
 Se fotografi una carta inglese e chiedi *jap* (o viceversa), il bot cerca la carta equivalente nell'altro
 catalogo (stesso Pokémon, illustratore e PS) e la segnala come **equivalente stimato**.
@@ -26,8 +27,11 @@ automatiche: per questo il bot non legge le inserzioni per lingua.
 
 ## Come funziona
 
-1. **Foto** → Claude vision legge nome, lingua, codice set, numero, regulation mark e indizi sulla variante.
-   **Oppure testo** → scrivi quello che è stampato in basso sulla carta. Non usa Claude, quindi non costa nulla:
+1. **Foto** → **Google Cloud Vision** (gratis fino a 1.000 foto al mese) legge il testo stampato sulla carta; il bot
+   ne ricava nome, codice set, numero e lingua (dalla sigla `EN`/`IT`… accanto al numero o dalla scrittura). La
+   variante (normale/reverse) da una foto non si vede: se la carta ne ha più d'una, il bot la chiede. In
+   alternativa `PHOTO_READER=claude` usa Claude vision (più preciso, a pagamento).
+   **Oppure testo** → scrivi quello che è stampato in basso sulla carta, gratis:
 
    | Scrivi | Trova |
    |---|---|
@@ -56,6 +60,7 @@ automatiche: per questo il bot non legge le inserzioni per lingua.
 | `soglia` | mostra la soglia generale |
 | `soglia 15%` · `soglia 2€` · `soglia 15% 2€` | cambia la soglia generale; `0%` o `0€` disattiva quella condizione |
 | `soglia 2 20%` · `soglia 2 predefinita` | soglia solo per la carta 2, oppure ritorno a quella generale |
+| `psa 2` · `psa 2 stop` | segui (o smetti di seguire) anche il prezzo PSA 10 della carta 2; dopo una ricerca c'è anche il pulsante *Sì + PSA 10* |
 | `comandi` (o `/comandi`, `aiuto`, `menu`) · `lingue` · `annulla` | guida · lingue supportate · ricomincia |
 
 Al primo messaggio il bot si presenta e manda la lista dei comandi. Lo `/` iniziale è facoltativo per tutti i comandi. I comandi funzionano anche a metà di una ricerca. I numeri sono quelli di `lista`: dopo uno `stop` il bot
@@ -141,7 +146,8 @@ Ricerca testuale come in chat, senza nessuna chiave (se il bot ti fa domande ris
 python -m cardbot.cli search "MEW 006 ita jap"
 ```
 
-Flusso completo da una foto (serve `ANTHROPIC_API_KEY` nel `.env`):
+Flusso completo da una foto (in locale serve `GOOGLE_VISION_API_KEY`, oppure `PHOTO_READER=claude` con
+`ANTHROPIC_API_KEY`):
 
 ```bash
 python -m cardbot.cli simulate foto_carta.jpg --langs "ita, jap"
@@ -209,10 +215,12 @@ cardbot/
 ├── bot/engine.py          # flusso della conversazione (indipendente dal trasporto)
 ├── bot/format.py          # testi in italiano
 ├── catalog/tcgdex.py      # client TCGdex con cache e limite di richieste
-├── recognition/vision.py  # Claude vision con output JSON vincolato
+├── recognition/ocr.py     # foto con Google Cloud Vision (gratis) e parsing del testo
+├── recognition/vision.py  # Claude vision con output JSON vincolato (alternativa)
 ├── recognition/matcher.py # match foto/testo -> carta, punteggio e candidati
 ├── recognition/text_query.py # parsing di "MEW 006 reverse ita jap"
 ├── prices/                # quotazioni per lingua e scelta dei campi per variante
+├── prices/graded.py       # prezzi PSA 10 (PokemonPriceTracker)
 ├── alerts/rules.py        # soglie e confronto (logica pura)
 ├── alerts/tracking.py     # carte seguite e prezzi sorvegliati
 ├── alerts/outbox.py       # snapshot, notifiche idempotenti, invio a digest (testo o template)
@@ -276,9 +284,12 @@ PROJECT_ID=cardbot-123456 ./deploy/gcp.sh all
 Il `.env` resta nella cartella personale di Cloud Shell, protetta dal tuo account Google. Se preferisci, cancellalo
 dopo il deploy: i segreti sono già in Secret Manager.
 
-**Puoi partire anche senza la chiave Anthropic**: lascia vuoto `ANTHROPIC_API_KEY` e il bot funziona con la
-ricerca testuale (*MEW 006*), gratis. A una foto risponde spiegando di scrivere codice set e numero. Per attivare
-le foto più avanti, aggiungi la chiave al `.env` e rilancia `./deploy/gcp.sh secrets` e poi `./deploy/gcp.sh deploy`.
+**Foto gratis senza chiavi**: su Cloud Run le foto si leggono con Google Cloud Vision usando l'account di servizio
+del bot (lo script abilita l'API e dà il permesso). `ANTHROPIC_API_KEY` serve solo se scegli `PHOTO_READER=claude`.
+
+**Prezzi PSA 10 (facoltativi)**: crea una chiave gratuita su [pokemonpricetracker.com](https://www.pokemonpricetracker.com)
+(piano Free), mettila in `POKEMONPRICETRACKER_API_KEY` nel `.env` e rilancia `./deploy/gcp.sh secrets` e poi
+`./deploy/gcp.sh deploy`.
 
 ### 1. Database su Neon
 
@@ -397,8 +408,12 @@ PROJECT_ID=cardbot-123456 ./deploy/gcp.sh deploy
 - **Secret Manager, Artifact Registry, Cloud Build**: nelle quote gratuite con questo uso.
 - **Neon Free**: 1 GB e 100 ore di calcolo al mese per progetto; il database si sospende dopo 5 minuti di
   inattività (il primo messaggio dopo una pausa è più lento di uno o due secondi).
-- Restano i costi d'uso già visti: Claude per le foto (circa 1-4 centesimi a foto) e i template WhatsApp oltre le
-  24 ore (circa 0,03 $).
+- **Google Cloud Vision**: le prime 1.000 foto al mese sono gratuite.
+- **PokemonPriceTracker Free**: 100 crediti al giorno; ogni carta PSA 10 costa 2 crediti (ricerca in chat o
+  controllo giornaliero). Il bot tiene in memoria i risultati per 6 ore e lascia 20 crediti di riserva al controllo
+  notturno; il piano gratuito è per uso personale.
+- Restano i costi d'uso già visti: i template WhatsApp oltre le 24 ore (circa 0,03 $) e, solo se scegli Claude per
+  le foto, circa 1-4 centesimi a foto.
 
 ### Database e migrazioni
 
