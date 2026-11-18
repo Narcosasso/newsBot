@@ -135,7 +135,11 @@ Cosa fa oggi (fase 1):
   col cambio BCE del giorno, statistiche, set, link a Cardmarket / TCGplayer / eBay;
 - **Segui questa carta**: scegli le lingue e se seguire anche il PSA 10; gli avvisi arrivano su WhatsApp
   (le notifiche push dell'app arriveranno in una fase successiva);
-- **Scansiona**: foto della carta (Google Vision, come sul bot) oppure codice scritto a mano;
+- **Scansiona**: scanner dal vivo con la fotocamera. Inquadri la carta nel riquadro e, quando resta ferma, la
+  riconosce da sola (modalità *Automatico*; in *Manuale* scatti tu); poi passi alla carta successiva. Le carte lette
+  restano in elenco con *+ Collezione* per aggiungerle al volo. In alternativa: foto dalla galleria o codice
+  scritto a mano. Ogni lettura usa Google Cloud Vision (gratis fino a 1.000 al mese): un contatore condiviso con il
+  bot si ferma a 950 letture al mese (`VISION_MONTHLY_LIMIT`), così non ci sono costi a sorpresa;
 - **Collezione**: le carte che possiedi, con quantità, variante e lingua di stampa; valore totale (prezzo di mercato
   Cardmarket di ogni carta) e andamento giorno per giorno; ordinamento per valore, nome, set o data, filtro per
   lingua e ricerca. Più collezioni (rinomina, elimina). Accanto, le carte che segui per gli avvisi;

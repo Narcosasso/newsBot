@@ -123,7 +123,7 @@ export type CollectionItem = {
   added_at: string | null;
 };
 
-export type OwnedItem = CollectionItem & { collection_name: string };
+export type OwnedItem = CollectionItem & { collection_name: string; kind?: string };
 
 export type CollectionTotals = { value: number; cards: number; unique: number; unpriced: number };
 export type CollectionSummary = CollectionTotals & { id: number; name: string };
@@ -195,6 +195,7 @@ export type Analysis = {
 
 export type ScanResult = {
   found: boolean;
+  usage?: { used: number; limit: number } | null;
   confident?: boolean;
   message: string | null;
   candidates: CardSummary[];
@@ -238,6 +239,7 @@ export const api = {
   pokedex: () => req<Pokedex>("/api/pokedex"),
   priceHistory: (idProduct: number, near: number) =>
     req<{ points: { day: string; price: number }[] }>(`/api/price-history/${idProduct}?near=${near}`),
+  scanUsage: () => req<{ usage: { used: number; limit: number } | null }>("/api/scan/usage"),
   pushKey: () => req<{ public_key: string }>("/api/push/key"),
   pushStatus: (endpoint: string) =>
     req<{ devices: number; this_device: boolean }>(`/api/push/status?endpoint=${encodeURIComponent(endpoint)}`),

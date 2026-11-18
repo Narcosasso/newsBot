@@ -20,6 +20,7 @@ from cardbot.prices.fx import FxRates
 from cardbot.prices.service import PriceService
 from cardbot.push import PushSender
 from cardbot.recognition.matcher import CardMatcher
+from cardbot.recognition.quota import QuotaReader
 from cardbot.recognition.readers import make_reader
 from cardbot.whatsapp.client import WhatsAppClient
 from cardbot.whatsapp.webhook import InboundEvent, parse_events, verify_signature
@@ -57,6 +58,8 @@ def build_container(settings: Settings) -> Container:
                               settings.whatsapp_api_version)
     catalog = TCGdexCatalog(settings.tcgdex_base_url, settings.tcgdex_max_rps)
     reader, matcher = make_reader(settings), CardMatcher(catalog)
+    if settings.photo_reader.strip().lower() in ("", "google"):
+        reader = QuotaReader(reader, sessions, settings.vision_monthly_limit)
     prices = PriceService(catalog, graded=_graded(settings))
     engine = Engine(sessions, whatsapp, reader, matcher, prices, timezone=settings.timezone)
     return Container(settings, sessions, whatsapp, engine, catalog=catalog, prices=prices, matcher=matcher,

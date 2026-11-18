@@ -190,9 +190,10 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
         try:
             read = await c.reader.read_card(image, request.headers.get("content-type", "image/jpeg"))
         except VisionError as exc:
-            return {"found": False, "message": str(exc), "candidates": []}
+            return {"found": False, "message": str(exc), "candidates": [], "usage": _usage(c)}
         if not read.is_pokemon_card:
-            return {"found": False, "message": "Non vedo una carta Pokémon in questa foto.", "candidates": []}
+            return {"found": False, "message": "Non vedo una carta Pokémon in questa foto.", "candidates": [],
+                    "usage": _usage(c)}
         result = await c.matcher.match(read)
         cards = []
         for cand in result.candidates:
@@ -202,7 +203,16 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
         return {"found": bool(cards), "confident": result.confident, "candidates": cards,
                 "read": {"name": read.name, "set_code": read.set_code, "number": read.number,
                          "language": read.language},
-                "message": None if cards else "Ho letto la carta ma non la trovo nel catalogo."}
+                "message": None if cards else "Ho letto la carta ma non la trovo nel catalogo.", "usage": _usage(c)}
+
+    def _usage(c) -> dict[str, int] | None:
+        """Letture di foto usate questo mese (solo con Google Vision, che ha il tetto)."""
+        used = getattr(c.reader, "used", None)
+        return {"used": used(), "limit": c.reader.limit} if used else None
+
+    @router.get("/scan/usage")
+    def scan_usage(user: User = Depends(current_user), c=Depends(container)) -> dict[str, Any]:
+        return {"usage": _usage(c)}
 
     # --- carte seguite (avvisi) -----------------------------------------------------------------------
 
