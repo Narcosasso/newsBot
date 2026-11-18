@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     app_pin: str = ""        # PIN di accesso all'app (almeno 6 cifre). Vuoto = app disattivata
     app_wa_id: str = ""      # utente WhatsApp con cui l'app condivide le carte seguite (default: primo ALLOWED_WA_IDS)
     web_dist: str = "web/dist"  # cartella dell'interfaccia compilata
+    # Notifiche push dell'app: chiavi create in automatico e salvate nel database se lasciate vuote.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:pokevault@example.com"
 
     # --- Bot ---
     default_langs: str = "ita,eng"

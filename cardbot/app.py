@@ -18,6 +18,7 @@ from cardbot.config import Settings, get_settings
 from cardbot.db import claim_inbound, make_engine, make_session_factory
 from cardbot.prices.fx import FxRates
 from cardbot.prices.service import PriceService
+from cardbot.push import PushSender
 from cardbot.recognition.matcher import CardMatcher
 from cardbot.recognition.readers import make_reader
 from cardbot.whatsapp.client import WhatsAppClient
@@ -40,6 +41,7 @@ class Container:
     matcher: Any = None
     reader: Any = None
     fx: Any = None
+    push: Any = None  # PushSender (notifiche dell'app)
 
 
 def _graded(settings: Settings):
@@ -58,7 +60,9 @@ def build_container(settings: Settings) -> Container:
     prices = PriceService(catalog, graded=_graded(settings))
     engine = Engine(sessions, whatsapp, reader, matcher, prices, timezone=settings.timezone)
     return Container(settings, sessions, whatsapp, engine, catalog=catalog, prices=prices, matcher=matcher,
-                     reader=reader, fx=FxRates())
+                     reader=reader, fx=FxRates(),
+                     push=PushSender(sessions, settings.vapid_subject, settings.vapid_public_key,
+                                     settings.vapid_private_key))
 
 
 async def process_event(c: Container, ev: InboundEvent) -> None:

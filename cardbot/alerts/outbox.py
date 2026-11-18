@@ -155,6 +155,7 @@ class Sender(Protocol):
 
 @dataclass
 class SendReport:
+    pushed: int = 0
     messages: int = 0
     notifications_sent: int = 0
     failed: int = 0
@@ -183,8 +184,13 @@ def template_params(lines: list[str]) -> list[str]:
     return [str(len(lines)), summary.replace("\n", " ")]
 
 
-async def send_pending(sessions: sessionmaker[Session], sender: Sender, template: str, template_lang: str,
-                       now: datetime | None = None) -> SendReport:
+async def send_pending(sessions: sessionmaker[Session], sender: Sender | None, template: str, template_lang: str,
+                       now: datetime | None = None, push=None) -> SendReport:
+    """Un riepilogo per utente: notifica push dell'app (se attivata) e messaggio WhatsApp.
+
+    Una notifica risulta "sent" se almeno un canale l'ha consegnata. Fuori dalla finestra di 24 ore WhatsApp
+    richiede il template approvato: senza, l'avviso arriva solo come notifica dell'app.
+    """
     now = now or utcnow()
     report = SendReport()
     with sessions() as session:
@@ -201,25 +207,51 @@ async def send_pending(sessions: sessionmaker[Session], sender: Sender, template
                 n.status = "sending"
             session.commit()  # rivendicate: da qui in poi non verranno mai reinviate in automatico
             lines = [n.text for n in notes]
-            in_window = user.last_inbound_at is not None and _aware(user.last_inbound_at) > now - SERVICE_WINDOW
-            try:
-                if in_window:
-                    wamid = await sender.send_text(user.wa_id, digest_text(lines))
-                else:
-                    wamid = await sender.send_template(user.wa_id, template, template_lang, template_params(lines))
-                    report.used_template += 1
-            except Exception as exc:  # errore esplicito: il messaggio non è partito
-                log.error("Invio notifiche fallito per l'utente %s: %s", user_id, exc)
+            pushed, wamid, error = 0, None, None
+            if push is not None:
+                try:
+                    pushed = await push.send_to_user(user_id, push_title(lines), push_body(lines))
+                except Exception as exc:
+                    log.error("Notifica push fallita per l'utente %s: %s", user_id, exc)
+            if sender is not None:
+                in_window = user.last_inbound_at is not None and _aware(user.last_inbound_at) > now - SERVICE_WINDOW
+                try:
+                    if in_window:
+                        wamid = await sender.send_text(user.wa_id, digest_text(lines))
+                    else:
+                        wamid = await sender.send_template(user.wa_id, template, template_lang,
+                                                           template_params(lines))
+                        report.used_template += 1
+                except Exception as exc:  # errore esplicito: il messaggio non è partito
+                    log.error("Invio WhatsApp fallito per l'utente %s: %s", user_id, exc)
+                    error = exc
+            delivered = pushed > 0 or (sender is not None and error is None)
+            if delivered:
                 for n in notes:
-                    n.status, n.error = "failed", str(exc)[:500]
-                report.failed += len(notes)
-            else:
-                for n in notes:
-                    n.status, n.wamid, n.sent_at, n.error = "sent", wamid, now, None
+                    n.status, n.wamid, n.sent_at = "sent", wamid or ("push" if pushed else None), now
+                    n.error = str(error)[:500] if error else None
                 report.messages += 1
                 report.notifications_sent += len(notes)
+                report.pushed += pushed
+            else:
+                for n in notes:
+                    n.status, n.error = "failed", str(error or "nessun canale disponibile")[:500]
+                report.failed += len(notes)
             session.commit()
     return report
+
+
+def _plain(text: str) -> str:
+    return text.replace("*", "").replace("_", "")
+
+
+def push_title(lines: list[str]) -> str:
+    return "PokeVault · prezzi cambiati" if len(lines) > 1 else "PokeVault · prezzo cambiato"
+
+
+def push_body(lines: list[str]) -> str:
+    body = "\n".join(_plain(x) for x in lines[:4])
+    return body + (f"\n…e altre {len(lines) - 4}" if len(lines) > 4 else "")
 
 
 def _aware(dt: datetime) -> datetime:

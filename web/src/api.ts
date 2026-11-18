@@ -35,6 +35,7 @@ export type Cardmarket = {
   change_7d: number | null;
   change_30d: number | null;
   updated: string | null;
+  id_product?: number | null;
 };
 
 export type PriceGroup = {
@@ -235,6 +236,16 @@ export const api = {
   set: (lang: string, id: string) =>
     req<SetDetail>(`/api/sets/${encodeURIComponent(lang)}/${encodeURIComponent(id)}`),
   pokedex: () => req<Pokedex>("/api/pokedex"),
+  priceHistory: (idProduct: number, near: number) =>
+    req<{ points: { day: string; price: number }[] }>(`/api/price-history/${idProduct}?near=${near}`),
+  pushKey: () => req<{ public_key: string }>("/api/push/key"),
+  pushStatus: (endpoint: string) =>
+    req<{ devices: number; this_device: boolean }>(`/api/push/status?endpoint=${encodeURIComponent(endpoint)}`),
+  pushSubscribe: (sub: PushSubscriptionJSON) =>
+    req<{ ok: boolean }>("/api/push/subscribe", { method: "POST", ...json(sub) }),
+  pushUnsubscribe: (endpoint: string) =>
+    req<{ ok: boolean }>("/api/push/unsubscribe", { method: "POST", ...json({ endpoint }) }),
+  pushTest: () => req<{ sent: number }>("/api/push/test", { method: "POST" }),
   analysis: (lang: string, id: string, variant: string) =>
     req<Analysis>(`/api/cards/${encodeURIComponent(lang)}/${encodeURIComponent(id)}/analysis?variant=${variant}`),
   scan: (image: Blob) =>

@@ -54,8 +54,8 @@ class PollReport:
                 lines.append(f"Mercato: {c['products_added']} prodotti nuovi, andamento di {c['sets']} espansioni")
         if self.sending:
             s = self.sending
-            lines.append(f"Invio: {s.messages} messaggi ({s.notifications_sent} notifiche, "
-                         f"{s.used_template} con template), {s.failed} fallite")
+            lines.append(f"Invio: {s.messages} riepiloghi ({s.notifications_sent} notifiche, "
+                         f"{s.used_template} con template WhatsApp, {s.pushed} push), {s.failed} fallite")
         return "\n".join(lines)
 
 
@@ -103,7 +103,8 @@ async def _load_graded(session: Session, graded) -> dict | None:
 
 async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide, sender: Sender | None,
                    template: str, template_lang: str, fallback: TCGdexPrices | None = None,
-                   dry_run: bool = False, force: bool = False, graded=None, product_list=None) -> PollReport:
+                   dry_run: bool = False, force: bool = False, graded=None, product_list=None,
+                   push=None) -> PollReport:
     collections = None
     with sessions() as session:
         data, status = await _load_data(session, guide, fallback, force)
@@ -131,8 +132,8 @@ async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide,
         elif dry_run:
             return PollReport(status=f"{status} (dry-run)")
     sending = None
-    if sender is not None and not dry_run:
-        sending = await send_pending(sessions, sender, template, template_lang)
+    if (sender is not None or push is not None) and not dry_run:
+        sending = await send_pending(sessions, sender, template, template_lang, push=push)
     return PollReport(status=status, evaluation=evaluation, sending=sending, collections=collections)
 
 
@@ -150,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     from cardbot.db import make_engine, make_session_factory
     from cardbot.whatsapp.client import WhatsAppClient
     from cardbot.prices.graded import GradedPrices
+    from cardbot.push import PushSender
 
     parser = argparse.ArgumentParser(prog="cardbot.jobs.poll")
     parser.add_argument("--dry-run", action="store_true")
@@ -172,6 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run, force=args.force,
         graded=GradedPrices(s.pokemonpricetracker_api_key) if s.pokemonpricetracker_api_key else None,
         product_list=CardmarketProductList(),
+        push=PushSender(sessions, s.vapid_subject, s.vapid_public_key, s.vapid_private_key),
     ))
     print(report.summary())
     return 1 if report.sending and report.sending.failed else 0

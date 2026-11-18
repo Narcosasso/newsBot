@@ -367,3 +367,11 @@ h3.sub { margin: 6px 0 0; font-size: 15px; }
 .dex-name { font-size: 13px; font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .dex-owned { position: absolute; right: 6px; top: 6px; min-width: 20px; padding: 0 5px; border-radius: 10px; font-size: 11px; font-weight: 800;
   background: var(--gold); color: var(--bg); }
+
+/* --- grafici e impostazioni --------------------------------------------------------------------------- */
+.pchart { display: flex; flex-direction: column; gap: 4px; touch-action: pan-y; user-select: none; }
+.pchart svg { width: 100%; display: block; }
+.pchart-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-variant-numeric: tabular-nums; }
+.pchart-axis { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.history { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.modal-card h3 { display: flex; align-items: center; gap: 6px; }

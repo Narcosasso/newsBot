@@ -3,6 +3,7 @@ import { api, type Analysis, type CardDetail, type CollectionSummary, type Grade
   type TrackingInfo } from "../api";
 import { CATALOG_BADGE, date, LANG_CHIPS, pct, plural, price, rarity, STAGE_IT, trendClass, TYPE_IT } from "../format";
 import { CardImage, Icon, Spinner } from "../ui";
+import { PriceChart } from "../chart";
 import { searchFor } from "./Search";
 
 export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: string; onClose: () => void }) {
@@ -184,10 +185,26 @@ function PriceBlock({ group }: { group: PriceGroup }) {
         <p class="info-box"><Icon name="info" size={18} />
           <span>{group.notes[0] ?? "Nessun prezzo su Cardmarket per questa versione."}</span></p>
       )}
+      {cm?.id_product && <HistoryChart idProduct={cm.id_product} near={cm.trend ?? cm.avg7 ?? 0} currency={cm.currency} />}
       {tp && (tp.market !== null || tp.low !== null) && (
         <div class="price-extra">🇺🇸 TCGplayer <b>{price(tp.market, tp.currency)}</b>
           {tp.low !== null && <span class="muted"> · da {price(tp.low, tp.currency)}</span>}</div>
       )}
+    </div>
+  );
+}
+
+/** Storico giornaliero salvato da PokeVault (carte in collezione o seguite): compare quando ci sono almeno 2 giorni. */
+function HistoryChart({ idProduct, near, currency }: { idProduct: number; near: number; currency: string }) {
+  const [points, setPoints] = useState<{ day: string; price: number }[]>([]);
+  useEffect(() => {
+    api.priceHistory(idProduct, near).then((r) => setPoints(r.points)).catch(() => setPoints([]));
+  }, [idProduct]);
+  if (points.length < 2) return null;
+  return (
+    <div class="history">
+      <div class="chart-title">Storico ({points.length} giorni)</div>
+      <PriceChart points={points.map((p) => ({ day: p.day, value: p.price }))} currency={currency} height={100} />
     </div>
   );
 }
@@ -557,7 +574,7 @@ function AnalysisResult({ a }: { a: Analysis }) {
       <p class="muted small">Affidabilità della stima: <b class={`conf conf-${a.confidence}`}>{a.confidence}</b>
         {a.priced_card ? ` · prezzi di ${a.priced_card}` : ""}{a.estimated_equivalent ? " (versione abbinata)" : ""}</p>
 
-      <PriceChart a={a} />
+      <AnalysisChart a={a} />
 
       <h3 class="sub">Cosa ho considerato</h3>
       <ul class="signals">
@@ -590,13 +607,12 @@ function AnalysisResult({ a }: { a: Analysis }) {
   );
 }
 
-function PriceChart({ a }: { a: Analysis }) {
+function AnalysisChart({ a }: { a: Analysis }) {
   if (a.history.length >= 2) {
     return (
       <div class="chart-box">
         <div class="chart-title">Prezzo registrato da PokeVault ({a.history.length} giorni)</div>
-        <Line points={a.history.map((h) => h.price)} tall />
-        <div class="chart-axis"><span>{date(a.history[0].day)}</span><span>{date(a.history[a.history.length - 1].day)}</span></div>
+        <PriceChart points={a.history.map((h) => ({ day: h.day, value: h.price }))} currency={a.currency} />
       </div>
     );
   }

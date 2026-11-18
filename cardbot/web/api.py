@@ -19,8 +19,9 @@ from cardbot.db import AppSession, RecentView, Tracking, User, get_or_create_use
 from cardbot.langs import LANGS
 from cardbot.recognition.vision import VisionError
 from cardbot.web.cards import card_detail, card_image, card_label, graded_detail
-from cardbot.web.analysis import card_analysis
+from cardbot.web.analysis import _history, card_analysis
 from cardbot.web.browse import add_browse_routes, owned_by_card
+from cardbot.web.push_api import add_push_routes
 from cardbot.web.collections_api import add_collection_routes, owned_for
 from cardbot.web.search import image_url, search, summary
 
@@ -173,6 +174,12 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
                        session: Session = Depends(db), c=Depends(container)) -> dict[str, Any]:
         return await card_analysis(session, c.catalog, c.prices, lang, card_id, variant)
 
+    @router.get("/price-history/{id_product}")
+    def price_history(id_product: int, near: float = 0, user: User = Depends(current_user),
+                      session: Session = Depends(db)) -> dict[str, Any]:
+        """Prezzi giornalieri salvati dal job (carte in collezione e seguite)."""
+        return {"points": [{"day": d.isoformat(), "price": v} for d, v in _history(session, id_product, near)]}
+
     # --- scansione ------------------------------------------------------------------------------------
 
     @router.post("/scan")
@@ -239,6 +246,7 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
 
     add_collection_routes(router, current_user, db, container)
     add_browse_routes(router, current_user, db, container)
+    add_push_routes(router, current_user, db, container)
     return router
 
 

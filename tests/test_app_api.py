@@ -7,6 +7,7 @@ from cardbot.app import Container, create_app
 from cardbot.config import Settings
 from cardbot.db import AppSession, TrackingTarget, make_engine, make_session_factory
 from cardbot.prices.service import PriceService
+from cardbot.push import PushSender
 from cardbot.recognition.matcher import CardMatcher
 from cardbot.recognition.ocr import parse_card_text
 from cardbot.recognition.vision import VisionError
@@ -41,7 +42,8 @@ def make_client(catalog):
         sessions = make_session_factory(make_engine("sqlite://"))
         prices = PriceService(catalog, graded=graded if graded is not None else FakeGraded())
         c = Container(settings, sessions, whatsapp=None, engine=None, catalog=catalog, prices=prices,
-                      matcher=CardMatcher(catalog), reader=reader or FakeReader(), fx=FakeFx())
+                      matcher=CardMatcher(catalog), reader=reader or FakeReader(), fx=FakeFx(),
+                      push=PushSender(sessions))
         return TestClient(create_app(c)), sessions
     return _make
 

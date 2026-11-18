@@ -151,6 +151,13 @@ Cosa fa oggi (fase 1):
 - **Pokédex**: i 1025 Pokémon (nomi e numeri da PokéAPI) con quante carte hai di ciascuno, filtri per generazione e
   per posseduti / mancanti; toccando un Pokémon si vedono tutte le sue carte. Nei risultati di ricerca un segno ✓
   indica le carte che hai già;
+- **Notifiche dell'app**: in Collezione tocca l'ingranaggio → *Attiva notifiche*. Gli avvisi di prezzo delle carte
+  seguite arrivano come notifica di PokeVault (oltre che su WhatsApp), anche ad app chiusa. Su iPhone servono
+  iOS 16.4+ e l'app aperta dall'icona sulla Home. Le chiavi che firmano le notifiche (VAPID) si creano da sole al
+  primo uso e restano nel database; non serve configurare nulla. Con le notifiche dell'app gli avvisi arrivano
+  anche fuori dalla finestra di 24 ore di WhatsApp, senza il template `price_alert`;
+- **Storico prezzi**: nella scheda carta, sotto ogni prezzo, il grafico dei prezzi salvati ogni notte (carte in
+  collezione e seguite; compare dal secondo giorno); in Collezione il grafico del valore totale;
 - **Tengo o vendo?** (nella scheda carta, tasto *Analizza questa carta*): verdetto (Tieni / Neutrale / Valuta di
   vendere / Vendi / Valore basso), probabilità stimata che fra 30 giorni la carta valga meno di oggi, intervallo
   di prezzo probabile, e i motivi uno per uno.

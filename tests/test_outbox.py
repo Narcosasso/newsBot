@@ -211,3 +211,37 @@ def test_template_params_are_single_line_and_bounded():
 def test_digest_text_single_and_multiple():
     assert "Prezzo cambiato" in digest_text(["a"])
     assert "Prezzi cambiati" in digest_text(["a", "b"])
+
+
+class FakePush:
+    def __init__(self, delivered: int = 1):
+        self.delivered = delivered
+        self.sent: list[tuple[int, str, str]] = []
+
+    async def send_to_user(self, user_id, title, body, url="/#/collection", tag="prezzi"):
+        self.sent.append((user_id, title, body))
+        return self.delivered
+
+
+async def test_push_only_delivers_alerts(db):
+    guide, push = FakeGuide(), FakePush()
+    guide.publish("v1", entry(733601, 12.0), entry(719448, 3.0))
+    report = await poll(db, guide, None, push=push)
+    assert report.sending.pushed == 1 and report.sending.notifications_sent == 1
+    _, title, body = push.sent[0]
+    assert title == "PokeVault · prezzo cambiato" and "*" not in body and "8,00 € → 12,00 €" in body
+    assert count(db, Notification, status="sent") == 1
+
+
+async def test_push_delivered_counts_even_if_whatsapp_fails(db):
+    guide, push = FakeGuide(), FakePush()
+    guide.publish("v1", entry(733601, 12.0), entry(719448, 3.0))
+    report = await poll(db, guide, FakeSender(fail=True), push=push)
+    assert report.sending.failed == 0 and count(db, Notification, status="sent") == 1
+
+
+async def test_no_channel_delivered_means_failed(db):
+    guide = FakeGuide()
+    guide.publish("v1", entry(733601, 12.0), entry(719448, 3.0))
+    report = await poll(db, guide, None, push=FakePush(delivered=0))
+    assert report.sending.failed == 1 and count(db, Notification, status="failed") == 1

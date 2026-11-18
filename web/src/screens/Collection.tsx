@@ -3,7 +3,9 @@ import { api, type CollectionDetail, type CollectionItem, type CollectionSummary
 import { CATALOG_BADGE, date, LANG_CHIPS, pct, plural, price, trendClass } from "../format";
 import { openCard } from "../nav";
 import { CardImage, Header, Icon, Spinner } from "../ui";
+import { SettingsSheet } from "./Settings";
 import { TrackedList } from "./Tracked";
+import { PriceChart } from "../chart";
 
 const SORTS = [
   { id: "value", label: "Valore" },
@@ -22,6 +24,7 @@ export function CollectionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [importing, setImporting] = useState(false);
+  const [settings, setSettings] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const loadList = () =>
@@ -55,16 +58,11 @@ export function CollectionScreen() {
     }
   };
 
-  const logout = async () => {
-    await api.logout().catch(() => {});
-    location.reload();
-  };
-
   return (
     <>
       <Header title="Collezione" right={<>
         <button class="round" onClick={() => fileInput.current?.click()} aria-label="Importa da file"><Icon name="upload" /></button>
-        <button class="round" onClick={logout} aria-label="Esci"><Icon name="logout" /></button>
+        <button class="round" onClick={() => setSettings(true)} aria-label="Impostazioni"><Icon name="gear" /></button>
       </>} />
       <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={onFile} />
 
@@ -99,6 +97,7 @@ export function CollectionScreen() {
       )}
 
       {report && <ImportResult report={report} onClose={() => setReport(null)} />}
+      {settings && <SettingsSheet onClose={() => setSettings(false)} />}
     </>
   );
 }
@@ -174,7 +173,7 @@ function CollectionView({ id, onChanged }: { id: number; onChanged: () => void }
             <span class={`trend ${trendClass(change)}`}>{pct(change)} <small>dal {date(first!.day)}</small></span>
           )}
         </div>
-        <Sparkline points={data.history.map((h) => h.value)} />
+        <PriceChart points={data.history.map((h) => ({ day: h.day, value: h.value }))} height={90} />
         {data.pending_prices > 0 && <p class="value-note"><span class="dot" /> Aggiorno i prezzi di {plural(data.pending_prices, "carta", "carte")}…</p>}
         {data.unpriced > 0 && !data.pending_prices && (
           <p class="value-note">{plural(data.unpriced, "carta", "carte")} senza prezzo su Cardmarket: non conteggiate.</p>
@@ -227,20 +226,6 @@ function CollectionView({ id, onChanged }: { id: number; onChanged: () => void }
         ))}
       </div>
     </>
-  );
-}
-
-function Sparkline({ points }: { points: number[] }) {
-  if (points.length < 2) return null;
-  const w = 300, h = 44;
-  const min = Math.min(...points), max = Math.max(...points);
-  const span = max - min || 1;
-  const d = points.map((p, i) => `${i ? "L" : "M"}${(i / (points.length - 1)) * w},${h - 4 - ((p - min) / span) * (h - 8)}`).join(" ");
-  const up = points[points.length - 1] >= points[0];
-  return (
-    <svg class="spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
-      <path d={d} fill="none" stroke={up ? "var(--up)" : "var(--down)"} stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-    </svg>
   );
 }
 
