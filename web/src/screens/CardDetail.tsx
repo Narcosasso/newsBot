@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
-import { api, type CardDetail, type Graded, type PriceGroup, type TrackingInfo } from "../api";
+import { api, type CardDetail, type CollectionSummary, type Graded, type OwnedItem, type PriceGroup,
+  type TrackingInfo } from "../api";
 import { CATALOG_BADGE, date, LANG_CHIPS, pct, plural, price, rarity, STAGE_IT, trendClass, TYPE_IT } from "../format";
 import { CardImage, Icon, Spinner } from "../ui";
 import { searchFor } from "./Search";
@@ -109,6 +110,11 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
             </section>
 
             <GradedPanel graded={graded} chinese={detail.catalog_lang === "zh-tw"} />
+
+            <OwnedPanel detail={detail} onChanged={(owned, msg) => {
+              setDetail({ ...detail, owned });
+              if (msg) flash(msg);
+            }} />
 
             <FollowPanel detail={detail} variant={variant?.variant ?? "holo"}
               psaAvailable={!!graded?.grades?.some((g) => g.company === "PSA" && g.grade === "10")}
@@ -362,4 +368,124 @@ function withTcgplayer(links: { name: string; url: string }[], graded: Graded | 
   if (links.some((l) => l.name === "TCGplayer") || !graded?.tcgplayer_id) return links;
   const tcg = { name: "TCGplayer", url: `https://www.tcgplayer.com/product/${graded.tcgplayer_id}` };
   return [links[0], tcg, ...links.slice(1)];
+}
+
+const ADD_LANGS = [...LANG_CHIPS, { code: "ko", label: "KOR", flag: "🇰🇷" }, { code: "zh", label: "CIN", flag: "🇨🇳" }];
+const flagFor = (code: string) => ADD_LANGS.find((l) => l.code === code)?.flag ?? code.toUpperCase();
+
+function OwnedPanel({ detail, onChanged }: {
+  detail: CardDetail; onChanged: (owned: OwnedItem[], msg?: string) => void;
+}) {
+  const defaultLang = detail.catalog_lang === "ja" ? "ja" : detail.catalog_lang === "zh-tw" ? "zh" : "it";
+  const [adding, setAdding] = useState(false);
+  const [variant, setVariant] = useState(detail.variants[0]?.variant ?? "normal");
+  const [lang, setLang] = useState(defaultLang);
+  const [qty, setQty] = useState(1);
+  const [cols, setCols] = useState<CollectionSummary[]>([]);
+  const [colId, setColId] = useState<number | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const owned = detail.owned ?? [];
+  const label = (v: string) => detail.variants.find((x) => x.variant === v)?.label ?? v;
+
+  useEffect(() => {
+    if (adding && !cols.length) api.collections().then((r) => {
+      setCols(r.collections);
+      setColId(r.collections[0]?.id);
+    }).catch(() => {});
+  }, [adding]);
+
+  const save = async (body: Parameters<typeof api.setItem>[0], msg: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.setItem(body);
+      onChanged(r.owned, msg);
+      setAdding(false);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const change = (o: OwnedItem, quantity: number) =>
+    save({ collection_id: o.collection_id, card_id: o.card_id, catalog_lang: o.catalog_lang, variant: o.variant,
+      lang: o.lang, quantity }, quantity ? "Quantità aggiornata" : "Tolta dalla collezione");
+
+  const add = () => {
+    const existing = owned.find((o) => o.variant === variant && o.lang === lang && (!colId || o.collection_id === colId));
+    save({ collection_id: colId, card_id: detail.id, catalog_lang: detail.catalog_lang, variant, lang,
+      quantity: (existing?.quantity ?? 0) + qty }, "✓ Aggiunta alla collezione");
+  };
+
+  const confirmMatch = async (o: OwnedItem) => {
+    await api.confirmItem(o.id);
+    onChanged(owned.map((x) => (x.id === o.id ? { ...x, needs_review: false } : x)), "Abbinamento confermato");
+  };
+
+  return (
+    <section class="panel">
+      <h2><Icon name="folder" size={20} /> Nella tua collezione</h2>
+      {owned.length === 0 && !adding && <p class="muted">Non hai ancora questa carta.</p>}
+      {owned.map((o) => (
+        <div class="owned-row">
+          <div class="owned-info">
+            <div class="strong">{flagFor(o.lang)} {o.variant_label ?? label(o.variant)}</div>
+            <div class="muted small">
+              {o.collection_name}{o.unit_price !== null ? ` · ${price(o.unit_price)} cad.` : ""}
+            </div>
+            {o.variant_label && <div class="muted small">Prezzo della versione senza «{o.variant_label}»: non ha un prezzo separato.</div>}
+            {o.needs_review && (
+              <div class="review-box">
+                Abbinata per nome durante l'import: è questa la carta giusta?
+                <div class="row gap">
+                  <button class="mini" onClick={() => confirmMatch(o)}>Sì, è giusta</button>
+                  <button class="mini danger" onClick={() => change(o, 0)}>No, toglila</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div class="stepper">
+            <button onClick={() => change(o, o.quantity - 1)} disabled={busy} aria-label="Una in meno"><Icon name="minus" size={16} /></button>
+            <span>{o.quantity}</span>
+            <button onClick={() => change(o, o.quantity + 1)} disabled={busy} aria-label="Una in più"><Icon name="plus" size={16} /></button>
+          </div>
+        </div>
+      ))}
+      {!adding && <button class="btn ghost" onClick={() => setAdding(true)}><Icon name="plus" size={18} /> Aggiungi alla collezione</button>}
+      {adding && (
+        <>
+          {detail.variants.length > 1 && (
+            <div class="segmented flush">
+              {detail.variants.map((v) => (
+                <button class={v.variant === variant ? "on" : ""} onClick={() => setVariant(v.variant)}>{v.label}</button>
+              ))}
+            </div>
+          )}
+          <p class="muted">Lingua della tua carta</p>
+          <div class="chips wrap">
+            {ADD_LANGS.map((l) => (
+              <button class={`chip ${lang === l.code ? "on" : ""}`} onClick={() => setLang(l.code)}>{l.flag} {l.label}</button>
+            ))}
+          </div>
+          {cols.length > 1 && (
+            <select class="input" value={colId} onChange={(e) => setColId(Number((e.target as HTMLSelectElement).value))}>
+              {cols.map((c) => <option value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          <div class="row gap">
+            <div class="stepper">
+              <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Una in meno"><Icon name="minus" size={16} /></button>
+              <span>{qty}</span>
+              <button onClick={() => setQty(qty + 1)} aria-label="Una in più"><Icon name="plus" size={16} /></button>
+            </div>
+            <button class="btn primary grow" onClick={add} disabled={busy}>{busy ? "Salvo…" : "Aggiungi"}</button>
+            <button class="btn ghost" onClick={() => setAdding(false)}>Annulla</button>
+          </div>
+          {error && <p class="error">{error}</p>}
+        </>
+      )}
+    </section>
+  );
 }

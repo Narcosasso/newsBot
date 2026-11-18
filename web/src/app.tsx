@@ -5,7 +5,7 @@ import { LoginScreen } from "./screens/Login";
 import { ScanScreen } from "./screens/Scan";
 import { SearchScreen } from "./screens/Search";
 import { SoonScreen } from "./screens/Soon";
-import { TrackedScreen } from "./screens/Tracked";
+import { CollectionScreen } from "./screens/Collection";
 import { go } from "./nav";
 import { Icon } from "./ui";
 
@@ -67,7 +67,7 @@ export function App() {
       <main class="screen" hidden={isCard}>
         {tab === "search" && <SearchScreen />}
         {tab === "scan" && <ScanScreen />}
-        {tab === "collection" && <TrackedScreen />}
+        {tab === "collection" && <CollectionScreen />}
         {tab === "sets" && <SoonScreen title="Espansioni" icon="grid"
           text="Tutti i set divisi per serie, con il completamento della tua collezione e le carte più costose." />}
         {tab === "dex" && <SoonScreen title="Pokédex" icon="dex"

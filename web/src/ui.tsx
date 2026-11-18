@@ -25,6 +25,10 @@ const PATHS: Record<string, ComponentChildren> = {
   link: (<><path d="M10 14l7-7M12.5 7H17v4.5" /><path d="M17 14v3.5A1.5 1.5 0 0 1 15.5 19h-9A1.5 1.5 0 0 1 5 17.5v-9A1.5 1.5 0 0 1 6.5 7H10" /></>),
   check: (<path d="M5 12.5l4.5 4.5L19 7.5" />),
   chevron: (<path d="M9.5 6l6 6-6 6" />),
+  upload: (<><path d="M12 15V4M8 8l4-4 4 4" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>),
+  plus: (<path d="M12 5v14M5 12h14" />),
+  minus: (<path d="M5 12h14" />),
+  refresh: (<><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4.5v4h-4" /></>),
   info: (<><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5.5M12 7.8v.4" /></>),
   logout: (<><path d="M14 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H14" /><path d="M11 12h9M17 9l3 3-3 3" /></>),
 };

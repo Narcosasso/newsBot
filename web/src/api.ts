@@ -87,6 +87,47 @@ export type CardDetail = {
   variants: { variant: string; label: string; groups: PriceGroup[] }[];
   marketplaces: { name: string; url: string }[];
   tracking: TrackingInfo[];
+  owned: OwnedItem[];
+};
+
+export type CollectionItem = {
+  id: number;
+  collection_id: number;
+  card_id: string;
+  catalog_lang: string;
+  name: string;
+  set_id: string | null;
+  set_name: string | null;
+  number_label: string | null;
+  image: string | null;
+  rarity: string | null;
+  variant: string;
+  variant_label: string | null;
+  lang: string;
+  quantity: number;
+  unit_price: number | null;
+  total: number | null;
+  needs_review: boolean;
+  added_at: string | null;
+};
+
+export type OwnedItem = CollectionItem & { collection_name: string };
+
+export type CollectionTotals = { value: number; cards: number; unique: number; unpriced: number };
+export type CollectionSummary = CollectionTotals & { id: number; name: string };
+export type CollectionDetail = CollectionSummary & {
+  history: { day: string; value: number; cards: number }[];
+  items: CollectionItem[];
+  pending_prices: number;
+};
+
+export type ImportReport = {
+  collection_id: number;
+  collection_name: string;
+  imported: number;
+  cards: number;
+  review: { item_id: number; file: string; matched: string; card_id: string; catalog_lang: string }[];
+  unmatched: { name: string; set: string; number: string; quantity: number; reason: string }[];
 };
 
 export type Graded = {
@@ -155,4 +196,21 @@ export const api = {
   track: (body: { card_id: string; catalog_lang: string; variant: string; langs: string[]; psa: boolean }) =>
     req<{ tracking: TrackingInfo }>("/api/tracking", { method: "PUT", ...json(body) }),
   untrack: (id: number) => req<{ ok: boolean }>(`/api/tracking/${id}`, { method: "DELETE" }),
+  collections: () => req<{ collections: CollectionSummary[] }>("/api/collections"),
+  collection: (id: number) => req<CollectionDetail>(`/api/collections/${id}`),
+  createCollection: (name: string) =>
+    req<{ id: number; name: string }>("/api/collections", { method: "POST", ...json({ name }) }),
+  renameCollection: (id: number, name: string) =>
+    req<{ id: number; name: string }>(`/api/collections/${id}`, { method: "PATCH", ...json({ name }) }),
+  deleteCollection: (id: number) => req<{ ok: boolean }>(`/api/collections/${id}`, { method: "DELETE" }),
+  refreshCollection: (id: number) => req<{ ok: boolean }>(`/api/collections/${id}/refresh`, { method: "POST" }),
+  importCollection: (fileText: string) =>
+    req<ImportReport>("/api/collections/import", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: fileText,
+    }),
+  setItem: (body: { collection_id?: number; card_id: string; catalog_lang: string; variant: string; lang: string;
+    quantity: number }) =>
+    req<{ item: CollectionItem | null; owned: OwnedItem[] }>("/api/collection-items", { method: "PUT", ...json(body) }),
+  confirmItem: (id: number) => req<{ ok: boolean }>(`/api/collection-items/${id}/confirm`, { method: "POST" }),
+  deleteItem: (id: number) => req<{ ok: boolean }>(`/api/collection-items/${id}`, { method: "DELETE" }),
 };

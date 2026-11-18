@@ -5,7 +5,7 @@
 #   PROJECT_ID=mio-progetto ./deploy/gcp.sh setup      # API, service account e permessi
 #   PROJECT_ID=mio-progetto ./deploy/gcp.sh secrets    # copia i segreti dal .env in Secret Manager
 #   PROJECT_ID=mio-progetto ./deploy/gcp.sh deploy     # build dell'immagine, servizio e job
-#   PROJECT_ID=mio-progetto ./deploy/gcp.sh schedule   # job ogni giorno alle 04:00 ora italiana
+#   PROJECT_ID=mio-progetto ./deploy/gcp.sh schedule   # job ogni giorno alle 04:00 e alle 14:00 ora italiana
 #   PROJECT_ID=mio-progetto ./deploy/gcp.sh url        # URL del webhook da inserire su Meta
 #
 # Ogni comando si può rilanciare: aggiorna ciò che esiste già.
@@ -16,7 +16,7 @@ REGION="${REGION:-europe-west1}"        # regione di livello 1 (quota gratuita p
 SERVICE="${SERVICE:-cardbot}"
 JOB="${JOB:-cardbot-poll}"
 ENV_FILE="${ENV_FILE:-.env}"
-SCHEDULE="${SCHEDULE:-0 4 * * *}"
+SCHEDULE="${SCHEDULE:-0 4,14 * * *}"   # 04:00 prezzi nuovi del giorno; 14:00 PSA 10 e controllo di riserva
 TIME_ZONE="${TIME_ZONE:-Europe/Rome}"
 
 RUNTIME_SA="cardbot-runtime@${PROJECT_ID}.iam.gserviceaccount.com"

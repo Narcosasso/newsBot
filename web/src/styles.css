@@ -249,3 +249,50 @@ h1, h2, p { margin: 0; }
   background: var(--surface-2); border: 1px solid var(--line); padding: 12px 18px; border-radius: 16px; font-weight: 650;
   z-index: 40; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
+
+/* --- collezione -------------------------------------------------------------------------------------- */
+.value-card { margin: 4px 16px 0; padding: 18px; border-radius: 22px; display: flex; flex-direction: column; gap: 4px;
+  background: radial-gradient(circle at 15% 0%, rgba(139, 109, 255, 0.28), transparent 60%), var(--surface); }
+.value-label { color: var(--muted); font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.6px; }
+.value-main { font-size: 38px; font-weight: 850; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.value-sub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 14px; }
+.value-note { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.value-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); animation: pulse 1s ease-in-out infinite alternate; }
+@keyframes pulse { to { opacity: 0.3; } }
+.spark { width: 100%; height: 44px; margin-top: 6px; }
+.mini { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 12px; background: var(--surface-2);
+  font-size: 13.5px; font-weight: 650; }
+.mini.danger { color: var(--down); }
+.banner.review { display: block; width: calc(100% - 32px); margin-top: 12px; text-align: left; background: var(--gold-soft); color: var(--gold); }
+.banner.review.on { outline: 1px solid rgba(244, 183, 64, 0.5); }
+.searchbar.small { height: 42px; margin-top: 12px; }
+.searchbar.small input { font-size: 16px; }
+.chip-sep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
+.link-more { margin: 8px 16px; color: var(--gold); font-weight: 650; }
+.tile-img { position: relative; }
+.qty { position: absolute; right: 4px; bottom: 4px; padding: 1px 7px; border-radius: 9px; font-size: 12px; font-weight: 800;
+  background: rgba(13, 15, 20, 0.85); color: var(--text); border: 1px solid var(--line); }
+.flag-review { position: absolute; left: 4px; top: 4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; font-weight: 800; background: var(--gold); color: var(--bg); }
+.tile-price { font-size: 13px; font-weight: 750; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+.owned-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+.owned-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: 12px; background: var(--bg); flex: none; }
+.stepper button { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); }
+.stepper span { min-width: 26px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+.review-box { margin-top: 6px; padding: 10px; border-radius: 12px; background: var(--gold-soft); color: var(--gold); font-size: 13.5px;
+  display: flex; flex-direction: column; gap: 8px; }
+.segmented.flush { margin: 0; }
+.grow { flex: 1; }
+select.input { appearance: none; }
+
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.6); display: flex; align-items: flex-end; justify-content: center; }
+.modal-card { width: 100%; max-width: 560px; max-height: 85dvh; overflow-y: auto; background: var(--surface); border-radius: 24px 24px 0 0;
+  padding: 20px 18px calc(env(safe-area-inset-bottom) + 20px); display: flex; flex-direction: column; gap: 10px; }
+.modal-card h2 { font-size: 22px; }
+.modal-card h3 { font-size: 16px; margin: 6px 0 0; }
+.modal-card p { line-height: 1.4; }
+.report-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.link { color: var(--gold); text-align: left; text-decoration: underline; }

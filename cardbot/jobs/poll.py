@@ -4,7 +4,7 @@
   python -m cardbot.jobs.poll --dry-run   # mostra cosa notificherebbe, senza salvare né inviare
   python -m cardbot.jobs.poll --force     # rielabora anche se la fonte non è cambiata (resta idempotente)
 
-Va schedulato una volta al giorno dopo l'aggiornamento del price guide (es. alle 04:00 ora italiana). Eseguirlo più
+Va schedulato dopo l'aggiornamento del price guide (alle 04:00 ora italiana) e, come riserva, alle 14:00. Eseguirlo più
 spesso non fa danni: con l'ETag invariato il server risponde 304 e il job si limita a ritentare gli invii falliti.
 """
 
@@ -14,13 +14,15 @@ import argparse
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from cardbot.alerts.outbox import EvaluationReport, SendReport, Sender, evaluate_targets, send_pending
 from cardbot.alerts.sources import CardmarketPriceGuide, PriceData, TCGdexPrices
 from cardbot.alerts.tracking import PSA10
-from cardbot.db import JobState, Tracking, TrackingTarget
+from cardbot.collections.service import ROME, today, update_from_price_guide
+from cardbot.db import CollectionItem, JobState, Tracking, TrackingTarget
 
 log = logging.getLogger("cardbot.poll")
 STATE_KEY = "price_guide"
@@ -31,6 +33,7 @@ class PollReport:
     status: str
     evaluation: EvaluationReport | None = None
     sending: SendReport | None = None
+    collections: dict | None = None
 
     def summary(self) -> str:
         lines = [f"Esito: {self.status}"]
@@ -42,6 +45,10 @@ class PollReport:
             lines += [f"  • {n}" for n in e.notifications]
             if e.missing_products:
                 lines.append(f"  prodotti assenti dalla fonte: {sorted(set(e.missing_products))}")
+        if self.collections:
+            c = self.collections
+            lines.append(f"Collezioni: {c['items_priced']} carte con prezzo aggiornato, "
+                         f"{c['history_rows']} righe di storico")
         if self.sending:
             s = self.sending
             lines.append(f"Invio: {s.messages} messaggi ({s.notifications_sent} notifiche, "
@@ -62,7 +69,9 @@ async def _load_data(session: Session, guide: CardmarketPriceGuide, fallback: TC
         targets = (session.query(TrackingTarget).join(Tracking)
                    .filter(Tracking.active.is_(True), TrackingTarget.active.is_(True),
                            TrackingTarget.source != PSA10).all())
-        return await fallback.fetch_for([(t.catalog_lang, t.card_id, t.variant) for t in targets]), "fallback"
+        wanted = [(t.catalog_lang, t.card_id, t.variant) for t in targets]
+        wanted += [(i.catalog_lang, i.card_id, i.variant) for i in session.query(CollectionItem).all()]
+        return await fallback.fetch_for(wanted), "fallback"
     if data is None:
         return None, "invariato (304)"
     if not force and (state.value or {}).get("version") == data.version:
@@ -92,15 +101,21 @@ async def _load_graded(session: Session, graded) -> dict | None:
 async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide, sender: Sender | None,
                    template: str, template_lang: str, fallback: TCGdexPrices | None = None,
                    dry_run: bool = False, force: bool = False, graded=None) -> PollReport:
+    collections = None
     with sessions() as session:
         data, status = await _load_data(session, guide, fallback, force)
         graded_quotes = await _load_graded(session, graded)
         evaluation = None
         if data is not None or graded_quotes:
             evaluation = evaluate_targets(session, data, graded_quotes)
+            if data is not None:
+                tracked = {pid for (pid,) in session.query(TrackingTarget.id_product)
+                           .filter(TrackingTarget.id_product.isnot(None)).all()}
+                collections = update_from_price_guide(session, data.entries, _data_day(data), tracked)
             if dry_run:
                 session.rollback()
-                return PollReport(status=f"{status} (dry-run: nulla salvato né inviato)", evaluation=evaluation)
+                return PollReport(status=f"{status} (dry-run: nulla salvato né inviato)", evaluation=evaluation,
+                                  collections=collections)
             if data is not None and data.source == guide.name:
                 state = session.get(JobState, STATE_KEY) or JobState(key=STATE_KEY)
                 state.value = {"version": data.version, "etag": data.etag}
@@ -111,7 +126,15 @@ async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide,
     sending = None
     if sender is not None and not dry_run:
         sending = await send_pending(sessions, sender, template, template_lang)
-    return PollReport(status=status, evaluation=evaluation, sending=sending)
+    return PollReport(status=status, evaluation=evaluation, sending=sending, collections=collections)
+
+
+def _data_day(data: PriceData):
+    """Giorno a cui si riferiscono i prezzi (createdAt del price guide), altrimenti oggi."""
+    try:
+        return datetime.fromisoformat(data.version.replace("Z", "+00:00")).astimezone(ROME).date()
+    except (ValueError, AttributeError):
+        return today()
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -2,11 +2,12 @@ import { useEffect, useState } from "preact/hooks";
 import { api, type TrackingInfo } from "../api";
 import { LANG_CHIPS, price } from "../format";
 import { openCard } from "../nav";
-import { CardImage, Header, Icon, Spinner } from "../ui";
+import { CardImage, Icon, Spinner } from "../ui";
 
 const flagOf = (code: string) => LANG_CHIPS.find((l) => l.code === code)?.flag ?? code.toUpperCase();
 
-export function TrackedScreen() {
+/** Carte seguite (avvisi di prezzo), condivise con il bot WhatsApp. */
+export function TrackedList() {
   const [rows, setRows] = useState<TrackingInfo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,19 +15,8 @@ export function TrackedScreen() {
     api.tracking().then((r) => setRows(r.trackings)).catch((e) => setError((e as Error).message));
   }, []);
 
-  const logout = async () => {
-    await api.logout().catch(() => {});
-    location.reload();
-  };
-
   return (
     <>
-      <Header title="Collezione" right={
-        <button class="round" onClick={logout} aria-label="Esci"><Icon name="logout" /></button>} />
-      <div class="banner">
-        <b>Collezioni in arrivo.</b> Qui potrai aggiungere le carte che possiedi, con varianti, quantità e valore.
-      </div>
-      <h2 class="section">Carte che segui</h2>
       {error && <p class="error pad">{error}</p>}
       {!rows && !error && <Spinner />}
       {rows && rows.length === 0 && (

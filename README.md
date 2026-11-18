@@ -96,7 +96,10 @@ python -m cardbot.jobs.poll
   il server risponde 304 e non si scarica nulla. È una sola richiesta al giorno, qualunque sia il numero di carte
   tracciate.
 - Se il file non è raggiungibile ripiega su TCGdex (una richiesta per carta, con limite al secondo).
-- Va schedulato **una volta al giorno, verso le 04:00 ora italiana**. Lanciarlo più spesso non crea doppioni.
+- È schedulato **due volte al giorno, alle 04:00 e alle 14:00 ora italiana**. Lanciarlo più spesso non crea doppioni.
+  Cardmarket rigenera i suoi prezzi una sola volta al giorno (verso le 03:00): il controllo delle 04:00 li legge;
+  quello delle 14:00 aggiorna i PSA 10 (2 crediti PokemonPriceTracker per carta seguita), ritenta gli avvisi non
+  partiti e fa da riserva se il primo non è andato a buon fine. Orari diversi: `SCHEDULE="0 4,14 * * *"`.
 - `--dry-run` mostra cosa notificherebbe senza salvare né inviare; `--force` rielabora anche un file già visto.
 
 ### Template WhatsApp per le notifiche
@@ -133,8 +136,16 @@ Cosa fa oggi (fase 1):
 - **Segui questa carta**: scegli le lingue e se seguire anche il PSA 10; gli avvisi arrivano su WhatsApp
   (le notifiche push dell'app arriveranno in una fase successiva);
 - **Scansiona**: foto della carta (Google Vision, come sul bot) oppure codice scritto a mano;
-- **Collezione**: per ora l'elenco delle carte che segui. Collezioni, espansioni, Pokédex e scanner dal vivo
-  arrivano nelle prossime fasi.
+- **Collezione**: le carte che possiedi, con quantità, variante e lingua di stampa; valore totale (prezzo di mercato
+  Cardmarket di ogni carta) e andamento giorno per giorno; ordinamento per valore, nome, set o data, filtro per
+  lingua e ricerca. Più collezioni (rinomina, elimina). Accanto, le carte che segui per gli avvisi;
+- **Import da MyDex**: in Collezione tocca l'icona con la freccia in su e scegli il file JSON esportato da MyDex.
+  Set e numeri vengono abbinati al catalogo TCGdex; le carte abbinate solo per nome (es. ristampe con un'altra
+  numerazione) sono segnate «da verificare» e le confermi dalla scheda; quelle non trovate vengono elencate, mai
+  inventate. Reimportare lo stesso file aggiorna le quantità senza creare doppioni. Le varianti con timbro (es.
+  «Anniversary Stamp») non hanno un prezzo separato nelle fonti gratuite: vale quello della versione normale;
+- ogni notte il job salva il prezzo di tutte le carte in collezione e di quelle seguite (storico per i grafici e
+  per la futura analisi «tengo o vendo»). Espansioni, Pokédex e scanner dal vivo arrivano nelle prossime fasi.
 
 ### Attivarla
 
@@ -294,7 +305,7 @@ Architettura:
 | Pezzo | Servizio | Note |
 |---|---|---|
 | Webhook WhatsApp + app PokeVault | **Cloud Run service** `cardbot` | URL HTTPS pubblico incluso, scala a zero, max 1 istanza |
-| Controllo prezzi giornaliero | **Cloud Run job** `cardbot-poll` | stessa immagine, avviato da Cloud Scheduler alle 04:00 (Europe/Rome) |
+| Controllo prezzi giornaliero | **Cloud Run job** `cardbot-poll` | stessa immagine, avviato da Cloud Scheduler alle 04:00 e alle 14:00 (Europe/Rome) |
 | Database | **Neon** (Postgres gestito) | piano Free; lo schema lo crea Alembic a ogni avvio del container |
 | Segreti | **Secret Manager** | token Meta, App Secret, verify token, chiave Anthropic, URL del database |
 
@@ -379,7 +390,7 @@ Lo script, rilanciabile:
   se il valore è cambiato;
 - `deploy` costruisce l'immagine con Cloud Build (`.env` escluso dal caricamento tramite `.gcloudignore`), pubblica
   il webhook e il job con la stessa immagine e tiene solo le ultime 2 immagini;
-- `schedule` pianifica il job ogni giorno alle 04:00 ora italiana;
+- `schedule` pianifica il job ogni giorno alle 04:00 e alle 14:00 ora italiana;
 - alla fine stampa il **Callback URL**, es. `https://cardbot-xxxx.europe-west1.run.app/webhook`.
 
 ### 4. Collega Meta

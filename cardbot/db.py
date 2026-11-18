@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import (
-    JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine,
+    JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine,
 )
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -165,6 +165,84 @@ class RecentView(Base):
     image: Mapped[str | None] = mapped_column(String(300))
     set_name: Mapped[str | None] = mapped_column(String(200))
     viewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Collection(Base):
+    """Una collezione di carte possedute (es. "le mie carte", "raccoglitore 151")."""
+
+    __tablename__ = "collections"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    items: Mapped[list[CollectionItem]] = relationship(back_populates="collection", cascade="all, delete-orphan")
+
+
+class CollectionItem(Base):
+    """Una carta posseduta: stessa carta, variante e lingua di stampa = una riga con la quantità."""
+
+    __tablename__ = "collection_items"
+    __table_args__ = (UniqueConstraint("collection_id", "catalog_lang", "card_id", "variant", "lang",
+                                       name="uq_item_card_variant_lang"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id"), index=True)
+    card_id: Mapped[str] = mapped_column(String(64), index=True)
+    catalog_lang: Mapped[str] = mapped_column(String(8))
+    variant: Mapped[str] = mapped_column(String(16))              # normal / holo / reverse
+    variant_label: Mapped[str | None] = mapped_column(String(64))  # es. "Anniversary Stamp" dall'import
+    lang: Mapped[str] = mapped_column(String(8))                  # lingua di stampa della carta posseduta
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    # Copia dei dati della carta, per mostrare la collezione senza interrogare il catalogo.
+    name: Mapped[str] = mapped_column(String(200))
+    set_id: Mapped[str | None] = mapped_column(String(64))
+    set_name: Mapped[str | None] = mapped_column(String(200))
+    number_label: Mapped[str | None] = mapped_column(String(32))
+    image: Mapped[str | None] = mapped_column(String(300))
+    rarity: Mapped[str | None] = mapped_column(String(64))
+    # Prezzo: prodotto Cardmarket e ultimo valore unitario noto (trend), aggiornato ogni notte dal job.
+    id_product: Mapped[int | None] = mapped_column(Integer, index=True)
+    shared_product: Mapped[bool] = mapped_column(Boolean, default=True)
+    unit_price: Mapped[float | None] = mapped_column(Float)
+    price_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    needs_review: Mapped[bool] = mapped_column(Boolean, default=False)  # abbinata all'import per nome: da controllare
+    source: Mapped[str | None] = mapped_column(String(32))            # "app", "mydex"
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    collection: Mapped[Collection] = relationship(back_populates="items")
+
+
+class PriceHistory(Base):
+    """Prezzo giornaliero di un prodotto Cardmarket (per lo storico e l'analisi), una riga per giorno e campo."""
+
+    __tablename__ = "price_history"
+    __table_args__ = (UniqueConstraint("id_product", "fields", "day", name="uq_history_product_fields_day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    id_product: Mapped[int] = mapped_column(Integer, index=True)
+    fields: Mapped[str] = mapped_column(String(8))   # "base" o "holo" (campi "-holo" del price guide)
+    day: Mapped[date] = mapped_column(Date)
+    low: Mapped[float | None] = mapped_column(Float)
+    trend: Mapped[float | None] = mapped_column(Float)
+    avg: Mapped[float | None] = mapped_column(Float)
+    avg1: Mapped[float | None] = mapped_column(Float)
+    avg7: Mapped[float | None] = mapped_column(Float)
+    avg30: Mapped[float | None] = mapped_column(Float)
+
+
+class CollectionValue(Base):
+    """Valore totale di una collezione giorno per giorno (grafico dell'andamento)."""
+
+    __tablename__ = "collection_values"
+    __table_args__ = (UniqueConstraint("collection_id", "day", name="uq_collection_value_day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id", ondelete="CASCADE"), index=True)
+    day: Mapped[date] = mapped_column(Date)
+    value: Mapped[float] = mapped_column(Float)
+    cards: Mapped[int] = mapped_column(Integer)
 
 
 class JobState(Base):

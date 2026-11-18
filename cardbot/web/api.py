@@ -19,6 +19,7 @@ from cardbot.db import AppSession, RecentView, Tracking, User, get_or_create_use
 from cardbot.langs import LANGS
 from cardbot.recognition.vision import VisionError
 from cardbot.web.cards import card_detail, card_image, card_label, graded_detail
+from cardbot.web.collections_api import add_collection_routes, owned_for
 from cardbot.web.search import image_url, search, summary
 
 COOKIE = "pv_session"
@@ -149,6 +150,10 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
             raise HTTPException(404, "Carta non trovata")
         _remember(session, user, detail)
         detail["tracking"] = _tracking_for(session, user, card_id, lang)
+        detail["owned"] = owned_for(session, user, card_id, lang)
+        if not detail["image"]:  # il catalogo non ha la foto: quella salvata in collezione (es. dal file importato)
+            photo = next((o["image"] for o in detail["owned"] if o["image"]), None)
+            detail["image"] = detail["image_small"] = photo
         return detail
 
     @router.get("/cards/{lang}/{card_id}/graded")
@@ -220,6 +225,7 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
         session.commit()
         return {"ok": True}
 
+    add_collection_routes(router, current_user, db, container)
     return router
 
 
