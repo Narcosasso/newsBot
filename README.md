@@ -112,6 +112,52 @@ In [WhatsApp Manager](https://business.facebook.com/wa/manage/message-templates/
 L'approvazione di solito arriva in pochi minuti. Nome e lingua si configurano con `WHATSAPP_ALERT_TEMPLATE` e
 `WHATSAPP_TEMPLATE_LANG`. Per inviare template serve un metodo di pagamento in WhatsApp Manager.
 
+## App PokeVault (iPhone, senza store)
+
+Oltre al bot c'è **PokeVault**, un'app web installabile (PWA) servita dallo stesso servizio Cloud Run: niente
+App Store, si aggiunge alla schermata Home da Safari e si apre a tutto schermo come un'app normale.
+Usa lo stesso database del bot: **le carte seguite sono le stesse** su WhatsApp e nell'app.
+
+Cosa fa oggi (fase 1):
+
+- **Cerca**: per nome ("Gengar ex"), codice ("SV2a 201", "30C 154"), numero Pokédex ("#94"), illustratore,
+  set ("set:sv2a"); filtro carte internazionali / giapponesi; ultime carte viste;
+- **Scheda carta**: immagine, prezzi Cardmarket per lingua (prezzo di mercato, minimo, media vendite,
+  andamento 7 e 30 giorni), **carte gradate** per società e voto (PSA, CGC, BGS, TAG, ACE…) convertite in euro
+  col cambio BCE del giorno, statistiche, set, link a Cardmarket / TCGplayer / eBay;
+- **Segui questa carta**: scegli le lingue e se seguire anche il PSA 10; gli avvisi arrivano su WhatsApp
+  (le notifiche push dell'app arriveranno in una fase successiva);
+- **Scansiona**: foto della carta (Google Vision, come sul bot) oppure codice scritto a mano;
+- **Collezione**: per ora l'elenco delle carte che segui. Collezioni, espansioni, Pokédex e scanner dal vivo
+  arrivano nelle prossime fasi.
+
+### Attivarla
+
+1. Nel `.env` scegli un PIN: `APP_PIN=` seguito da almeno 6 cifre (non usare quello del telefono).
+   `APP_WA_ID` puoi lasciarlo vuoto: l'app usa il primo numero di `ALLOWED_WA_IDS`.
+2. Ripubblica: `PROJECT_ID=cardbot-123456 ./deploy/gcp.sh all` (copia il PIN in Secret Manager e ricostruisce
+   l'immagine con l'app dentro).
+3. Sull'iPhone apri in **Safari** l'indirizzo del servizio (quello stampato alla fine, senza `/webhook`,
+   es. `https://cardbot-xxxx.europe-west1.run.app`), inserisci il PIN.
+4. Tocca **Condividi** (il quadrato con la freccia) → **Aggiungi alla schermata Home** → **Aggiungi**.
+   Da quel momento PokeVault si apre dall'icona, senza barra di Safari.
+
+Sicurezza: il PIN si verifica sul server; dopo 5 tentativi sbagliati l'accesso si blocca per 15 minuti.
+L'accesso resta valido sul telefono (cookie `HttpOnly`, solo HTTPS); il tasto in alto a destra in *Collezione* esce.
+
+### Sviluppo in locale
+
+```bash
+APP_PIN=135790 uvicorn cardbot.app:app --port 8000
+```
+
+```bash
+cd web && npm install && npm run dev
+```
+
+Vite apre l'app su `http://localhost:5173` e inoltra le chiamate `/api` al server sulla porta 8000.
+`npm run build` produce `web/dist`, che il server pubblica da solo se la cartella esiste.
+
 ## Avvio in locale
 
 Requisiti: Python 3.12+.
@@ -242,7 +288,7 @@ Architettura:
 
 | Pezzo | Servizio | Note |
 |---|---|---|
-| Webhook WhatsApp | **Cloud Run service** `cardbot` | URL HTTPS pubblico incluso, scala a zero, max 1 istanza |
+| Webhook WhatsApp + app PokeVault | **Cloud Run service** `cardbot` | URL HTTPS pubblico incluso, scala a zero, max 1 istanza |
 | Controllo prezzi giornaliero | **Cloud Run job** `cardbot-poll` | stessa immagine, avviato da Cloud Scheduler alle 04:00 (Europe/Rome) |
 | Database | **Neon** (Postgres gestito) | piano Free; lo schema lo crea Alembic a ogni avvio del container |
 | Segreti | **Secret Manager** | token Meta, App Secret, verify token, chiave Anthropic, URL del database |
@@ -324,7 +370,7 @@ Lo script, rilanciabile:
 
 - `setup` abilita le API (Cloud Run, Scheduler, Secret Manager, Artifact Registry, Cloud Build) e crea due
   service account con i soli permessi necessari;
-- `secrets` copia in Secret Manager i 5 segreti dal `.env`, passandoli da stdin; crea una nuova versione solo
+- `secrets` copia in Secret Manager i segreti compilati nel `.env`, passandoli da stdin; crea una nuova versione solo
   se il valore è cambiato;
 - `deploy` costruisce l'immagine con Cloud Build (`.env` escluso dal caricamento tramite `.gcloudignore`), pubblica
   il webhook e il job con la stessa immagine e tiene solo le ultime 2 immagini;

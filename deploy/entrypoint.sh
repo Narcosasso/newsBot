@@ -6,7 +6,7 @@ alembic upgrade head
 
 case "${1:-web}" in
   web)
-    exec uvicorn cardbot.app:app --host 0.0.0.0 --port "${PORT:-8080}" --proxy-headers
+    exec uvicorn cardbot.app:app --host 0.0.0.0 --port "${PORT:-8080}" --proxy-headers --forwarded-allow-ips "*"
     ;;
   job)
     shift
