@@ -184,7 +184,8 @@ una probabilità, avvicinata al 50% quando i dati sono pochi (l'affidabilità è
 Dopo il primo deploy con l'analisi, per avere subito i dati dei set senza aspettare la notte:
 
 ```bash
-gcloud run jobs execute cardbot-poll --region europe-west1 --args="job,--force" --wait
+PROJECT_ID=cardbot-123456   # il tuo progetto
+gcloud --project "$PROJECT_ID" run jobs execute cardbot-poll --region europe-west1 --args="job,--force" --wait
 ```
 
 ### Attivarla
