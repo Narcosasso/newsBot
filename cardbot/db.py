@@ -175,6 +175,8 @@ class Collection(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(100))
+    # "collection" (carte possedute) oppure "wishlist" (carte desiderate: non contano come possedute)
+    kind: Mapped[str] = mapped_column(String(16), default="collection", server_default="collection")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     items: Mapped[list[CollectionItem]] = relationship(back_populates="collection", cascade="all, delete-orphan")
@@ -208,6 +210,10 @@ class CollectionItem(Base):
     unit_price: Mapped[float | None] = mapped_column(Float)
     price_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     needs_review: Mapped[bool] = mapped_column(Boolean, default=False)  # abbinata all'import per nome: da controllare
+    dex_ids: Mapped[str | None] = mapped_column(String(32))  # numeri Pokédex ("94" o "94,95"); "" = non è un Pokémon
+    # Lista desideri: avviso quando il prezzo scende sotto questa cifra (una volta, finché non risale).
+    target_price: Mapped[float | None] = mapped_column(Float)
+    target_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     source: Mapped[str | None] = mapped_column(String(32))            # "app", "mydex"
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -274,6 +280,22 @@ class SetStats(Base):
     median_change_7d: Mapped[float | None] = mapped_column(Float)   # frazione, es. -0.04 = -4%
     median_change_30d: Mapped[float | None] = mapped_column(Float)
     share_up_30d: Mapped[float | None] = mapped_column(Float)       # quota di carte sopra la media 30 gg
+
+
+class PushSubscription(Base):
+    """Iscrizione alle notifiche push dell'app (Web Push) di un dispositivo."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(600), unique=True)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    user_agent: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failures: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class JobState(Base):

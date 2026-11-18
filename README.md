@@ -146,6 +146,11 @@ Cosa fa oggi (fase 1):
   «Anniversary Stamp») non hanno un prezzo separato nelle fonti gratuite: vale quello della versione normale;
 - ogni notte il job salva il prezzo di tutte le carte in collezione e di quelle seguite (storico per i grafici e
   per l'analisi). Espansioni, Pokédex e scanner dal vivo arrivano nelle prossime fasi;
+- **Espansioni**: tutti i set divisi per serie (internazionali, giapponesi, cinesi), dalla più recente; per ogni set
+  le carte che possiedi e la percentuale di completamento; nel set, filtro tutte / le mie / mancanti (in grigio);
+- **Pokédex**: i 1025 Pokémon (nomi e numeri da PokéAPI) con quante carte hai di ciascuno, filtri per generazione e
+  per posseduti / mancanti; toccando un Pokémon si vedono tutte le sue carte. Nei risultati di ricerca un segno ✓
+  indica le carte che hai già;
 - **Tengo o vendo?** (nella scheda carta, tasto *Analizza questa carta*): verdetto (Tieni / Neutrale / Valuta di
   vendere / Vendi / Valore basso), probabilità stimata che fra 30 giorni la carta valga meno di oggi, intervallo
   di prezzo probabile, e i motivi uno per uno.

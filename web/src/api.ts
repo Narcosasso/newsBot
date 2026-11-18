@@ -12,7 +12,18 @@ export type CardSummary = {
   set_name?: string;
   set_logo?: string | null;
   image: string | null;
+  owned?: number;
 };
+
+export type SetBrief = { id: string; name: string; logo: string | null; symbol: string | null; total: number | null;
+  official: number | null; owned: number };
+export type SeriesGroup = { id: string; name: string; logo: string | null; release_date: string | null; sets: SetBrief[] };
+export type SetDetail = {
+  id: string; catalog_lang: string; name: string; logo: string | null; symbol: string | null; serie: string | null;
+  code: string; release_date: string | null; total: number; official: number | null; owned_unique: number;
+  owned_cards: number; owned_value: number; cards: CardSummary[];
+};
+export type Pokedex = { pokemon: [number, string, number, number][]; owned_species: number; total: number; pending: number };
 
 export type Cardmarket = {
   currency: string;
@@ -220,6 +231,10 @@ export const api = {
     req<CardDetail>(`/api/cards/${encodeURIComponent(lang)}/${encodeURIComponent(id)}`),
   graded: (lang: string, id: string, variant: string) =>
     req<Graded>(`/api/cards/${encodeURIComponent(lang)}/${encodeURIComponent(id)}/graded?variant=${variant}`),
+  sets: (lang: string) => req<{ series: SeriesGroup[]; owned_sets: number }>(`/api/sets?lang=${lang}`),
+  set: (lang: string, id: string) =>
+    req<SetDetail>(`/api/sets/${encodeURIComponent(lang)}/${encodeURIComponent(id)}`),
+  pokedex: () => req<Pokedex>("/api/pokedex"),
   analysis: (lang: string, id: string, variant: string) =>
     req<Analysis>(`/api/cards/${encodeURIComponent(lang)}/${encodeURIComponent(id)}/analysis?variant=${variant}`),
   scan: (image: Blob) =>

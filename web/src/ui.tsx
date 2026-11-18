@@ -65,22 +65,26 @@ export function CardImage({ src, alt, class: cls = "" }: { src: string | null; a
   );
 }
 
-export function CardTile({ card }: { card: CardSummary }) {
+export function CardTile({ card, dimMissing = false, hideSet = false }: { card: CardSummary; dimMissing?: boolean; hideSet?: boolean }) {
+  const missing = dimMissing && !card.owned;
   return (
-    <button class="tile" onClick={() => openCard(card.catalog_lang, card.id)}>
-      <CardImage src={card.image} alt={card.name} />
+    <button class={`tile ${missing ? "missing" : ""}`} onClick={() => openCard(card.catalog_lang, card.id)}>
+      <div class="tile-img">
+        <CardImage src={card.image} alt={card.name} />
+        {!!card.owned && <span class="owned-badge" title="Ce l'hai">✓{card.owned > 1 ? ` ${card.owned}` : ""}</span>}
+      </div>
       <span class="tile-name">{card.name}</span>
       <span class="tile-sub">
         {CATALOG_BADGE[card.catalog_lang] && <span class="badge">{CATALOG_BADGE[card.catalog_lang]}</span>}
         {card.number_label ?? card.number ?? ""}
       </span>
-      <span class="tile-sub">{card.set_name}</span>
+      {!hideSet && <span class="tile-sub">{card.set_name}</span>}
     </button>
   );
 }
 
-export function CardGrid({ cards }: { cards: CardSummary[] }) {
-  return <div class="grid">{cards.map((c) => <CardTile key={`${c.catalog_lang}:${c.id}`} card={c} />)}</div>;
+export function CardGrid({ cards, dimMissing = false, hideSet = false }: { cards: CardSummary[]; dimMissing?: boolean; hideSet?: boolean }) {
+  return <div class="grid">{cards.map((c) => <CardTile key={`${c.catalog_lang}:${c.id}`} card={c} dimMissing={dimMissing} hideSet={hideSet} />)}</div>;
 }
 
 export function Header({ title, right }: { title: string; right?: ComponentChildren }) {

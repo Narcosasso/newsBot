@@ -73,6 +73,12 @@ class TCGdexCatalog:
     async def list_sets(self, lang: str) -> list[dict[str, Any]]:
         return await self._get(f"/{lang}/sets", SETS_TTL) or []
 
+    async def list_series(self, lang: str) -> list[dict[str, Any]]:
+        return await self._get(f"/{lang}/series", SETS_TTL) or []
+
+    async def get_series(self, lang: str, series_id: str) -> dict[str, Any] | None:
+        return await self._get(f"/{lang}/series/{quote(series_id)}", SETS_TTL)
+
     async def get_set(self, lang: str, set_id: str) -> dict[str, Any] | None:
         return await self._get(f"/{lang}/sets/{quote(set_id)}", SETS_TTL)
 

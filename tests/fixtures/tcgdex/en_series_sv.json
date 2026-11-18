@@ -1,0 +1,206 @@
+{
+ "id": "sv",
+ "logo": "https://assets.tcgdex.net/en/sv/sv01/logo",
+ "name": "Scarlet & Violet",
+ "firstSet": {
+  "cardCount": {
+   "official": 225,
+   "total": 226
+  },
+  "id": "svp",
+  "name": "SVP Black Star Promos"
+ },
+ "lastSet": {
+  "cardCount": {
+   "official": 86,
+   "total": 173
+  },
+  "id": "sv10.5w",
+  "logo": "https://assets.tcgdex.net/en/sv/sv10.5w/logo",
+  "name": "White Flare",
+  "symbol": "https://assets.tcgdex.net/univ/sv/sv10.5w/symbol"
+ },
+ "releaseDate": "2023-03-31",
+ "sets": [
+  {
+   "cardCount": {
+    "official": 225,
+    "total": 226
+   },
+   "id": "svp",
+   "name": "SVP Black Star Promos"
+  },
+  {
+   "cardCount": {
+    "official": 198,
+    "total": 258
+   },
+   "id": "sv01",
+   "logo": "https://assets.tcgdex.net/en/sv/sv01/logo",
+   "name": "Scarlet & Violet",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv01/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 24,
+    "total": 24
+   },
+   "id": "sve",
+   "name": "Scarlet & Violet Energy"
+  },
+  {
+   "cardCount": {
+    "official": 193,
+    "total": 279
+   },
+   "id": "sv02",
+   "logo": "https://assets.tcgdex.net/en/sv/sv02/logo",
+   "name": "Paldea Evolved",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv02/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 197,
+    "total": 230
+   },
+   "id": "sv03",
+   "logo": "https://assets.tcgdex.net/en/sv/sv03/logo",
+   "name": "Obsidian Flames",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv03/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 165,
+    "total": 207
+   },
+   "id": "sv03.5",
+   "logo": "https://assets.tcgdex.net/en/sv/sv03.5/logo",
+   "name": "151",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 48,
+    "total": 48
+   },
+   "id": "mfb",
+   "name": "My First Battle"
+  },
+  {
+   "cardCount": {
+    "official": 182,
+    "total": 266
+   },
+   "id": "sv04",
+   "logo": "https://assets.tcgdex.net/en/sv/sv04/logo",
+   "name": "Paradox Rift",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv04/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 91,
+    "total": 245
+   },
+   "id": "sv04.5",
+   "logo": "https://assets.tcgdex.net/en/sv/sv04.5/logo",
+   "name": "Paldean Fates",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv04.5/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 162,
+    "total": 218
+   },
+   "id": "sv05",
+   "name": "Temporal Forces",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv05/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 167,
+    "total": 226
+   },
+   "id": "sv06",
+   "logo": "https://assets.tcgdex.net/en/sv/sv06/logo",
+   "name": "Twilight Masquerade",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv06/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 64,
+    "total": 99
+   },
+   "id": "sv06.5",
+   "logo": "https://assets.tcgdex.net/en/sv/sv06.5/logo",
+   "name": "Shrouded Fable",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv06.5/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 142,
+    "total": 175
+   },
+   "id": "sv07",
+   "logo": "https://assets.tcgdex.net/en/sv/sv07/logo",
+   "name": "Stellar Crown"
+  },
+  {
+   "cardCount": {
+    "official": 191,
+    "total": 252
+   },
+   "id": "sv08",
+   "logo": "https://assets.tcgdex.net/en/sv/sv08/logo",
+   "name": "Surging Sparks"
+  },
+  {
+   "cardCount": {
+    "official": 131,
+    "total": 180
+   },
+   "id": "sv08.5",
+   "logo": "https://assets.tcgdex.net/en/sv/sv08.5/logo",
+   "name": "Prismatic Evolutions"
+  },
+  {
+   "cardCount": {
+    "official": 159,
+    "total": 190
+   },
+   "id": "sv09",
+   "logo": "https://assets.tcgdex.net/en/sv/sv09/logo",
+   "name": "Journey Together",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv09/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 182,
+    "total": 244
+   },
+   "id": "sv10",
+   "logo": "https://assets.tcgdex.net/en/sv/sv10/logo",
+   "name": "Destined Rivals",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv10/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 86,
+    "total": 172
+   },
+   "id": "sv10.5b",
+   "logo": "https://assets.tcgdex.net/en/sv/sv10.5b/logo",
+   "name": "Black Bolt",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv10.5b/symbol"
+  },
+  {
+   "cardCount": {
+    "official": 86,
+    "total": 173
+   },
+   "id": "sv10.5w",
+   "logo": "https://assets.tcgdex.net/en/sv/sv10.5w/logo",
+   "name": "White Flare",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv10.5w/symbol"
+  }
+ ]
+}

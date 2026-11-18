@@ -331,3 +331,39 @@ h3.sub { margin: 6px 0 0; font-size: 15px; }
 .sig-up .sig-icon { background: rgba(61, 220, 132, 0.15); color: var(--up); }
 .sig-down .sig-icon { background: rgba(255, 95, 109, 0.15); color: var(--down); }
 .set-box { padding: 12px; border-radius: 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 6px; }
+
+/* --- espansioni e pokédex --------------------------------------------------------------------------- */
+.owned-badge { position: absolute; right: 4px; top: 4px; padding: 1px 6px; border-radius: 9px; font-size: 11px; font-weight: 800;
+  background: var(--up); color: #062b16; }
+.tile.missing .card-img { filter: grayscale(1) brightness(0.55); }
+.tile.missing .tile-name { color: var(--muted); }
+.set-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--surface); text-align: left; }
+.set-logo-box { width: 72px; height: 40px; flex: none; display: grid; place-items: center; color: var(--muted); }
+.set-logo-box img { max-width: 72px; max-height: 40px; object-fit: contain; }
+.set-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.set-main .strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-count { flex: none; font-variant-numeric: tabular-nums; font-size: 14px; }
+.set-count b { color: var(--gold); font-size: 16px; }
+.set-count span { color: var(--muted); }
+.progress { height: 6px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.progress div { height: 100%; background: linear-gradient(90deg, var(--gold), #ffd57a); border-radius: 4px; }
+.progress.big { height: 10px; }
+.set-hero { margin: 0 16px; padding: 18px; border-radius: 22px; text-align: center; display: flex; flex-direction: column; gap: 6px; align-items: center;
+  background: radial-gradient(circle at 50% 0%, rgba(139, 109, 255, 0.25), transparent 70%), var(--surface); }
+.set-hero h1 { font-size: 26px; font-weight: 800; }
+.set-hero-logo { max-width: 220px; max-height: 90px; object-fit: contain; }
+.set-progress { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.set-progress .row { justify-content: center; }
+.dex-summary { margin: 0 16px 12px; padding: 14px 16px; border-radius: 18px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+.dex-summary b { color: var(--gold); font-size: 20px; }
+.dex-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px; }
+@media (min-width: 600px) { .dex-grid { grid-template-columns: repeat(6, 1fr); } }
+.dex-cell { position: relative; display: flex; flex-direction: column; align-items: center; padding: 8px 4px 10px; border-radius: 16px;
+  background: var(--surface); color: var(--muted); }
+.dex-cell img { width: 72px; height: 72px; image-rendering: pixelated; filter: brightness(0) invert(0.25); opacity: 0.8; }
+.dex-cell.owned { background: linear-gradient(180deg, rgba(244, 183, 64, 0.16), var(--surface)); color: var(--text); }
+.dex-cell.owned img { filter: none; opacity: 1; }
+.dex-num { font-size: 11px; font-variant-numeric: tabular-nums; }
+.dex-name { font-size: 13px; font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.dex-owned { position: absolute; right: 6px; top: 6px; min-width: 20px; padding: 0 5px; border-radius: 10px; font-size: 11px; font-weight: 800;
+  background: var(--gold); color: var(--bg); }

@@ -20,6 +20,7 @@ from cardbot.langs import LANGS
 from cardbot.recognition.vision import VisionError
 from cardbot.web.cards import card_detail, card_image, card_label, graded_detail
 from cardbot.web.analysis import card_analysis
+from cardbot.web.browse import add_browse_routes, owned_by_card
 from cardbot.web.collections_api import add_collection_routes, owned_for
 from cardbot.web.search import image_url, search, summary
 
@@ -134,7 +135,12 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
     @router.get("/search")
     async def do_search(q: str = "", lang: str = "all", user: User = Depends(current_user),
                         c=Depends(container)) -> dict[str, Any]:
-        return {"cards": await search(c.catalog, c.matcher, q[:100], lang)}
+        cards = await search(c.catalog, c.matcher, q[:100], lang)
+        with c.sessions() as session:
+            mine = owned_by_card(session, user)
+        for card in cards:
+            card["owned"] = mine.get((card["catalog_lang"], card["id"]), 0)
+        return {"cards": cards}
 
     @router.get("/recent")
     def recent(user: User = Depends(current_user), session: Session = Depends(db)) -> dict[str, Any]:
@@ -232,6 +238,7 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
         return {"ok": True}
 
     add_collection_routes(router, current_user, db, container)
+    add_browse_routes(router, current_user, db, container)
     return router
 
 

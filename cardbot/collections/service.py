@@ -124,19 +124,39 @@ async def refresh_items(sessions: sessionmaker[Session], catalog: Catalog, item_
     from cardbot.web.cards import card_image  # evita un import circolare
     from cardbot.web.search import image_url
 
+    ids = [i for i in item_ids if i not in _IN_PROGRESS]  # stessa carta già in aggiornamento: non si ripete
+    _IN_PROGRESS.update(ids)
+    try:
+        return await _refresh(sessions, catalog, ids, card_image, image_url)
+    finally:
+        _IN_PROGRESS.difference_update(ids)
+
+
+_IN_PROGRESS: set[int] = set()
+
+
+async def _refresh(sessions: sessionmaker[Session], catalog: Catalog, item_ids: list[int], card_image,
+                   image_url) -> int:
     updated = 0
     touched: set[int] = set()
     for item_id in item_ids:
+        # La connessione al database non resta occupata mentre si aspetta il catalogo.
+        with sessions() as session:
+            item = session.get(CollectionItem, item_id)
+            key = (item.catalog_lang, item.card_id) if item else None
+        if key is None:
+            continue
+        try:
+            card = await catalog.get_card(*key)
+            image = await card_image(catalog, key[0], card) if card else None
+        except Exception as exc:  # una carta che non risponde non blocca le altre
+            log.warning("Carta %s non disponibile: %s", key[1], exc)
+            continue
+        if card is None:
+            continue
         with sessions() as session:
             item = session.get(CollectionItem, item_id)
             if item is None:
-                continue
-            try:
-                card = await catalog.get_card(item.catalog_lang, item.card_id)
-            except Exception as exc:  # una carta che non risponde non blocca le altre
-                log.warning("Carta %s non disponibile: %s", item.card_id, exc)
-                continue
-            if card is None:
                 continue
             available = variants_of(card)
             if available and item.variant not in available:
@@ -152,8 +172,9 @@ async def refresh_items(sessions: sessionmaker[Session], catalog: Catalog, item_
             item.id_product = int(cm["idProduct"]) if cm.get("idProduct") else None
             item.unit_price = market_price(cm, item.variant, item.shared_product)
             item.price_updated_at = parse_datetime(cm.get("updated")) or utcnow()
-            item.image = image_url(await card_image(catalog, item.catalog_lang, card)) or item.image
+            item.image = image_url(image) or item.image
             item.rarity = card.get("rarity")
+            item.dex_ids = ",".join(str(n) for n in card.get("dexId") or [])
             s = card.get("set") or {}
             total = (s.get("cardCount") or {}).get("official")
             item.number_label = f"{card.get('localId', '')}/{total}" if total else card.get("localId")

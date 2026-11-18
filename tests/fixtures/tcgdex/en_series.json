@@ -1,0 +1,16 @@
+[
+ {
+  "id": "misc",
+  "name": "Miscellaneous"
+ },
+ {
+  "id": "sv",
+  "name": "Scarlet & Violet",
+  "logo": "https://assets.tcgdex.net/en/sv/sv01/logo"
+ },
+ {
+  "id": "tcgp",
+  "name": "Pok\u00e9mon TCG Pocket",
+  "logo": "https://assets.tcgdex.net/en/tcgp/A1/logo"
+ }
+]

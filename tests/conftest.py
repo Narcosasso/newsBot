@@ -30,6 +30,12 @@ class FakeCatalog:
     async def list_sets(self, lang: str) -> list[dict[str, Any]]:
         return self._file(f"{lang}/sets") or []
 
+    async def list_series(self, lang: str) -> list[dict[str, Any]]:
+        return self._file(f"{lang}/series") or []
+
+    async def get_series(self, lang: str, series_id: str) -> dict[str, Any] | None:
+        return self._file(f"{lang}/series/{series_id}")
+
     async def get_set(self, lang: str, set_id: str) -> dict[str, Any] | None:
         return self._file(f"{lang}/sets/{set_id}")
 

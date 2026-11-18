@@ -41,6 +41,7 @@ def item_json(i: CollectionItem) -> dict[str, Any]:
         "lang": i.lang, "quantity": i.quantity, "unit_price": i.unit_price,
         "total": round(i.unit_price * i.quantity, 2) if i.unit_price is not None else None,
         "needs_review": i.needs_review, "added_at": i.added_at.isoformat() if i.added_at else None,
+        "dex_ids": [int(n) for n in (i.dex_ids or "").split(",") if n], "target_price": i.target_price,
     }
 
 
@@ -53,14 +54,15 @@ def add_collection_routes(router: APIRouter, current_user: Callable, db: Callabl
         return col
 
     def default_collection(session: Session, user: User) -> Collection:
-        first = session.query(Collection).filter_by(user_id=user.id).order_by(Collection.id).first()
+        first = (session.query(Collection).filter_by(user_id=user.id, kind="collection")
+                 .order_by(Collection.id).first())
         return first or get_or_create_collection(session, user, "La mia collezione")
 
     @router.get("/collections")
     def list_collections(user: User = Depends(current_user), session: Session = Depends(db)) -> dict[str, Any]:
         out = []
         for col in session.query(Collection).filter_by(user_id=user.id).order_by(Collection.id).all():
-            out.append({"id": col.id, "name": col.name, **collection_totals(col.items)})
+            out.append({"id": col.id, "name": col.name, "kind": col.kind, **collection_totals(col.items)})
         return {"collections": out}
 
     @router.post("/collections")
@@ -94,7 +96,7 @@ def add_collection_routes(router: APIRouter, current_user: Callable, db: Callabl
         history = (session.query(CollectionValue).filter_by(collection_id=col.id)
                    .order_by(CollectionValue.day).all())
         items = sorted(col.items, key=lambda i: -(i.unit_price or 0) * i.quantity)
-        return {"id": col.id, "name": col.name, **collection_totals(col.items),
+        return {"id": col.id, "name": col.name, "kind": col.kind, **collection_totals(col.items),
                 "history": [{"day": h.day.isoformat(), "value": h.value, "cards": h.cards} for h in history],
                 "items": [item_json(i) for i in items],
                 "pending_prices": sum(1 for i in col.items if i.price_updated_at is None)}
@@ -187,4 +189,4 @@ def owned_for(session: Session, user: User, card_id: str, catalog_lang: str) -> 
     rows = (session.query(CollectionItem).join(Collection)
             .filter(Collection.user_id == user.id, CollectionItem.card_id == card_id,
                     CollectionItem.catalog_lang == catalog_lang).all())
-    return [{**item_json(i), "collection_name": i.collection.name} for i in rows]
+    return [{**item_json(i), "collection_name": i.collection.name, "kind": i.collection.kind} for i in rows]

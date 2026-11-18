@@ -4,7 +4,8 @@ import { CardDetailScreen } from "./screens/CardDetail";
 import { LoginScreen } from "./screens/Login";
 import { ScanScreen } from "./screens/Scan";
 import { SearchScreen } from "./screens/Search";
-import { SoonScreen } from "./screens/Soon";
+import { PokedexScreen } from "./screens/Pokedex";
+import { SetsScreen } from "./screens/Sets";
 import { CollectionScreen } from "./screens/Collection";
 import { go } from "./nav";
 import { Icon } from "./ui";
@@ -35,6 +36,7 @@ export function App() {
   const route = useRoute();
   const [state, setState] = useState<"loading" | "login" | "ready">("loading");
   const [lastTab, setLastTab] = useState<Tab>("search");
+  const [lastPath, setLastPath] = useState("search");  // chiudendo una carta si torna esattamente qui
 
   const check = () =>
     api
@@ -56,8 +58,11 @@ export function App() {
   const isCard = head === "card" && route.length >= 3;
   const tab: Tab = (TABS.find((t) => t.id === head)?.id ?? lastTab) as Tab;
   useEffect(() => {
-    if (!isCard && TABS.some((t) => t.id === head)) setLastTab(head as Tab);
-  }, [head, isCard]);
+    if (!isCard && TABS.some((t) => t.id === head)) {
+      setLastTab(head as Tab);
+      setLastPath(route.map(encodeURIComponent).join("/"));
+    }
+  }, [route.join("/"), isCard]);
 
   if (state === "loading") return <div class="splash"><Icon name="vault" size={64} /></div>;
   if (state === "login") return <LoginScreen onDone={() => setState("ready")} />;
@@ -68,12 +73,10 @@ export function App() {
         {tab === "search" && <SearchScreen />}
         {tab === "scan" && <ScanScreen />}
         {tab === "collection" && <CollectionScreen />}
-        {tab === "sets" && <SoonScreen title="Espansioni" icon="grid"
-          text="Tutti i set divisi per serie, con il completamento della tua collezione e le carte più costose." />}
-        {tab === "dex" && <SoonScreen title="Pokédex" icon="dex"
-          text="I 1.025 Pokémon divisi per generazione: a colori quelli che hai in collezione." />}
+        {tab === "sets" && <SetsScreen route={head === "sets" ? route : ["sets"]} />}
+        {tab === "dex" && <PokedexScreen />}
       </main>
-      {isCard && <CardDetailScreen lang={route[1]} id={route.slice(2).join("/")} onClose={() => go(lastTab)} />}
+      {isCard && <CardDetailScreen lang={route[1]} id={route.slice(2).join("/")} onClose={() => go(lastPath)} />}
       <nav class="tabbar" hidden={isCard}>
         {TABS.map((t) => (
           <button class={`tab ${t.id === tab ? "active" : ""}`} onClick={() => go(t.id)} aria-label={t.label}>
