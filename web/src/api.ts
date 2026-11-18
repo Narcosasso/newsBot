@@ -151,6 +151,36 @@ export type Graded = {
   }[];
 };
 
+export type Analysis = {
+  available: boolean;
+  reason?: string;
+  price: number;
+  currency: string;
+  updated: string | null;
+  priced_card: string | null;
+  priced_langs: string[];
+  estimated_equivalent: boolean;
+  verdict: "hold" | "neutral" | "consider_selling" | "sell" | "low_value";
+  verdict_label: string;
+  summary: string;
+  p_down: number;
+  p_up: number;
+  expected_change: number;
+  range_low: number;
+  range_high: number;
+  horizon_days: number;
+  confidence: "bassa" | "media" | "alta";
+  net_if_sold: number;
+  notes: string[];
+  signals: { key: string; title: string; detail: string; score: number; direction: "up" | "down" | "flat" }[];
+  history: { day: string; price: number }[];
+  averages: { label: string; value: number }[];
+  set: null | { name: string; cards: number; change_7d: number | null; change_30d: number | null;
+    share_up: number | null; index: { day: string; value: number }[] };
+  release_date: string | null;
+  disclaimer: string;
+};
+
 export type ScanResult = {
   found: boolean;
   confident?: boolean;
@@ -190,6 +220,8 @@ export const api = {
     req<CardDetail>(`/api/cards/${encodeURIComponent(lang)}/${encodeURIComponent(id)}`),
   graded: (lang: string, id: string, variant: string) =>
     req<Graded>(`/api/cards/${encodeURIComponent(lang)}/${encodeURIComponent(id)}/graded?variant=${variant}`),
+  analysis: (lang: string, id: string, variant: string) =>
+    req<Analysis>(`/api/cards/${encodeURIComponent(lang)}/${encodeURIComponent(id)}/analysis?variant=${variant}`),
   scan: (image: Blob) =>
     req<ScanResult>("/api/scan", { method: "POST", headers: { "Content-Type": image.type }, body: image }),
   tracking: () => req<{ trackings: TrackingInfo[] }>("/api/tracking"),

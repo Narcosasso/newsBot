@@ -25,6 +25,7 @@ const PATHS: Record<string, ComponentChildren> = {
   link: (<><path d="M10 14l7-7M12.5 7H17v4.5" /><path d="M17 14v3.5A1.5 1.5 0 0 1 15.5 19h-9A1.5 1.5 0 0 1 5 17.5v-9A1.5 1.5 0 0 1 6.5 7H10" /></>),
   check: (<path d="M5 12.5l4.5 4.5L19 7.5" />),
   chevron: (<path d="M9.5 6l6 6-6 6" />),
+  chart: (<><path d="M4 19.5h16" /><path d="M6 15l4-4.5 3.5 3L19 7" /><path d="M15.5 7H19v3.5" /></>),
   upload: (<><path d="M12 15V4M8 8l4-4 4 4" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>),
   plus: (<path d="M12 5v14M5 12h14" />),
   minus: (<path d="M5 12h14" />),

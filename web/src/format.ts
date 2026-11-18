@@ -12,6 +12,7 @@ export function price(value: number | null | undefined, currency = "EUR"): strin
 
 export function pct(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
+  value = Math.round(value * 10) / 10; // niente "−0,0%"
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
   return `${sign}${Math.abs(value).toLocaleString("it-IT", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`;
 }

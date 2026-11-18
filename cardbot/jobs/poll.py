@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from cardbot.alerts.outbox import EvaluationReport, SendReport, Sender, evaluate_targets, send_pending
 from cardbot.alerts.sources import CardmarketPriceGuide, PriceData, TCGdexPrices
 from cardbot.alerts.tracking import PSA10
+from cardbot.analysis.market import CardmarketProductList, compute_set_stats, refresh_products
 from cardbot.collections.service import ROME, today, update_from_price_guide
 from cardbot.db import CollectionItem, JobState, Tracking, TrackingTarget
 
@@ -49,6 +50,8 @@ class PollReport:
             c = self.collections
             lines.append(f"Collezioni: {c['items_priced']} carte con prezzo aggiornato, "
                          f"{c['history_rows']} righe di storico")
+            if "sets" in c:
+                lines.append(f"Mercato: {c['products_added']} prodotti nuovi, andamento di {c['sets']} espansioni")
         if self.sending:
             s = self.sending
             lines.append(f"Invio: {s.messages} messaggi ({s.notifications_sent} notifiche, "
@@ -100,7 +103,7 @@ async def _load_graded(session: Session, graded) -> dict | None:
 
 async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide, sender: Sender | None,
                    template: str, template_lang: str, fallback: TCGdexPrices | None = None,
-                   dry_run: bool = False, force: bool = False, graded=None) -> PollReport:
+                   dry_run: bool = False, force: bool = False, graded=None, product_list=None) -> PollReport:
     collections = None
     with sessions() as session:
         data, status = await _load_data(session, guide, fallback, force)
@@ -112,6 +115,10 @@ async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide,
                 tracked = {pid for (pid,) in session.query(TrackingTarget.id_product)
                            .filter(TrackingTarget.id_product.isnot(None)).all()}
                 collections = update_from_price_guide(session, data.entries, _data_day(data), tracked)
+                if data.source == guide.name and product_list is not None:
+                    # Dati per l'analisi: prodotti nuovi e andamento di tutte le espansioni (price guide completo).
+                    collections["products_added"] = await refresh_products(session, product_list, force)
+                    collections["sets"] = compute_set_stats(session, data.entries, _data_day(data))
             if dry_run:
                 session.rollback()
                 return PollReport(status=f"{status} (dry-run: nulla salvato né inviato)", evaluation=evaluation,
@@ -164,6 +171,7 @@ def main(argv: list[str] | None = None) -> int:
         fallback=TCGdexPrices(TCGdexCatalog(s.tcgdex_base_url, s.tcgdex_max_rps)),
         dry_run=args.dry_run, force=args.force,
         graded=GradedPrices(s.pokemonpricetracker_api_key) if s.pokemonpricetracker_api_key else None,
+        product_list=CardmarketProductList(),
     ))
     print(report.summary())
     return 1 if report.sending and report.sending.failed else 0

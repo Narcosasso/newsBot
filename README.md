@@ -145,7 +145,31 @@ Cosa fa oggi (fase 1):
   inventate. Reimportare lo stesso file aggiorna le quantità senza creare doppioni. Le varianti con timbro (es.
   «Anniversary Stamp») non hanno un prezzo separato nelle fonti gratuite: vale quello della versione normale;
 - ogni notte il job salva il prezzo di tutte le carte in collezione e di quelle seguite (storico per i grafici e
-  per la futura analisi «tengo o vendo»). Espansioni, Pokédex e scanner dal vivo arrivano nelle prossime fasi.
+  per l'analisi). Espansioni, Pokédex e scanner dal vivo arrivano nelle prossime fasi;
+- **Tengo o vendo?** (nella scheda carta, tasto *Analizza questa carta*): verdetto (Tieni / Neutrale / Valuta di
+  vendere / Vendi / Valore basso), probabilità stimata che fra 30 giorni la carta valga meno di oggi, intervallo
+  di prezzo probabile, e i motivi uno per uno.
+
+### Come funziona l'analisi «Tengo o vendo?»
+
+Fonti, tutte gratuite: le medie Cardmarket della carta (oggi, ieri, 7 e 30 giorni, prezzo minimo), lo storico
+giornaliero salvato da PokeVault, e due file pubblici di Cardmarket scaricati dal job notturno: l'elenco prodotti
+(espansione, data di uscita, ristampe della stessa carta) e il listino prezzi, da cui si calcola ogni giorno
+l'andamento di tutte le espansioni (variazione mediana delle carte da almeno 0,50 €).
+
+Segnali, ognuno con un punteggio da −1 a +1 e un peso: andamento rispetto alla media dei 30 e dei 7 giorni, picchi
+improvvisi, tendenza dello storico PokeVault, offerta (prezzo minimo rispetto a quello di mercato), andamento del
+set e confronto con la carta, età del set (nei primi mesi di solito i prezzi scendono, i set vecchi tendono a
+salire), ristampe recenti. La media pesata dà la variazione attesa a 30 giorni; con la volatilità stimata diventa
+una probabilità, avvicinata al 50% quando i dati sono pochi (l'affidabilità è indicata: bassa / media / alta).
+È una stima statistica trasparente, non una previsione né un consiglio finanziario. Il codice è in
+`cardbot/analysis/engine.py`.
+
+Dopo il primo deploy con l'analisi, per avere subito i dati dei set senza aspettare la notte:
+
+```bash
+gcloud run jobs execute cardbot-poll --region europe-west1 --args="job,--force" --wait
+```
 
 ### Attivarla
 

@@ -245,6 +245,37 @@ class CollectionValue(Base):
     cards: Mapped[int] = mapped_column(Integer)
 
 
+class ProductInfo(Base):
+    """Prodotto Cardmarket (carta singola): espansione, "metacarta" (stessa carta in altre stampe) e data di uscita.
+
+    Dall'elenco prodotti pubblico di Cardmarket; serve all'analisi (andamento del set, ristampe, età del set).
+    """
+
+    __tablename__ = "product_info"
+
+    id_product: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    id_expansion: Mapped[int | None] = mapped_column(Integer, index=True)
+    id_metacard: Mapped[int | None] = mapped_column(Integer, index=True)
+    date_added: Mapped[date | None] = mapped_column(Date)
+    name: Mapped[str | None] = mapped_column(String(200))
+
+
+class SetStats(Base):
+    """Andamento giornaliero di un'espansione Cardmarket, calcolato dal price guide su tutte le sue carte."""
+
+    __tablename__ = "set_stats"
+    __table_args__ = (UniqueConstraint("id_expansion", "day", name="uq_set_stats_day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    id_expansion: Mapped[int] = mapped_column(Integer, index=True)
+    day: Mapped[date] = mapped_column(Date)
+    cards: Mapped[int] = mapped_column(Integer)                # carte con un prezzo di almeno 0,50 €
+    total_trend: Mapped[float] = mapped_column(Float)          # somma dei prezzi di mercato (indice del set)
+    median_change_7d: Mapped[float | None] = mapped_column(Float)   # frazione, es. -0.04 = -4%
+    median_change_30d: Mapped[float | None] = mapped_column(Float)
+    share_up_30d: Mapped[float | None] = mapped_column(Float)       # quota di carte sopra la media 30 gg
+
+
 class JobState(Base):
     """Stato persistente dei job (es. ETag e versione dell'ultimo price guide elaborato)."""
 

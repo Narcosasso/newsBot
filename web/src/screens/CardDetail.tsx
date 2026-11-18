@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { api, type CardDetail, type CollectionSummary, type Graded, type OwnedItem, type PriceGroup,
+import { api, type Analysis, type CardDetail, type CollectionSummary, type Graded, type OwnedItem, type PriceGroup,
   type TrackingInfo } from "../api";
 import { CATALOG_BADGE, date, LANG_CHIPS, pct, plural, price, rarity, STAGE_IT, trendClass, TYPE_IT } from "../format";
 import { CardImage, Icon, Spinner } from "../ui";
@@ -108,6 +108,8 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
               {variant?.groups.map((g) => <PriceBlock group={g} />)}
               <PriceNotes groups={variant?.groups ?? []} />
             </section>
+
+            <AnalysisPanel key={`${detail.id}:${variant?.variant}`} detail={detail} variant={variant?.variant ?? "holo"} />
 
             <GradedPanel graded={graded} chinese={detail.catalog_lang === "zh-tw"} />
 
@@ -487,5 +489,148 @@ function OwnedPanel({ detail, onChanged }: {
         </>
       )}
     </section>
+  );
+}
+
+const VERDICT_CLASS: Record<Analysis["verdict"], string> = {
+  hold: "v-hold", neutral: "v-neutral", consider_selling: "v-consider", sell: "v-sell", low_value: "v-neutral",
+};
+
+function AnalysisPanel({ detail, variant }: { detail: CardDetail; variant: string }) {
+  const [data, setData] = useState<Analysis | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setData(await api.analysis(detail.catalog_lang, detail.id, variant));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section class="panel analysis">
+      <h2><Icon name="chart" size={20} /> Tengo o vendo?</h2>
+      {!data && !busy && (
+        <>
+          <p class="muted">Analizzo andamento del prezzo, storico, offerta, età e andamento del set e ti do una stima
+            per i prossimi 30 giorni.</p>
+          <button class="btn primary" onClick={run}>Analizza questa carta</button>
+        </>
+      )}
+      {busy && <Spinner label="Analizzo il mercato…" />}
+      {error && <p class="error">{error}</p>}
+      {data && !data.available && <p class="muted">{data.reason}</p>}
+      {data?.available && <AnalysisResult a={data} />}
+    </section>
+  );
+}
+
+function AnalysisResult({ a }: { a: Analysis }) {
+  const down = Math.round(a.p_down * 100);
+  return (
+    <>
+      <div class={`verdict ${VERDICT_CLASS[a.verdict]}`}>
+        <div class="verdict-label">{a.verdict_label}</div>
+        <p>{a.summary}</p>
+      </div>
+
+      <div class="prob">
+        <div class="prob-head">
+          <span class="down">↘ {down}% scende</span>
+          <span class="up">{100 - down}% sale o resta ↗</span>
+        </div>
+        <div class="prob-bar"><div style={{ width: `${down}%` }} /></div>
+        <p class="muted small">Probabilità stimata che fra {a.horizon_days} giorni valga meno di oggi ({price(a.price, a.currency)}).</p>
+      </div>
+
+      <div class="price-grid">
+        <div><small>Fra 30 gg, da</small>{price(a.range_low, a.currency)}</div>
+        <div><small>a</small>{price(a.range_high, a.currency)}</div>
+        <div><small>Variazione attesa</small><span class={trendClass(a.expected_change * 100)}>{pct(a.expected_change * 100)}</span></div>
+      </div>
+      <p class="muted small">Affidabilità della stima: <b class={`conf conf-${a.confidence}`}>{a.confidence}</b>
+        {a.priced_card ? ` · prezzi di ${a.priced_card}` : ""}{a.estimated_equivalent ? " (versione abbinata)" : ""}</p>
+
+      <PriceChart a={a} />
+
+      <h3 class="sub">Cosa ho considerato</h3>
+      <ul class="signals">
+        {a.signals.map((s) => (
+          <li class={`sig sig-${s.direction}`}>
+            <span class="sig-icon">{s.direction === "up" ? "↗" : s.direction === "down" ? "↘" : "→"}</span>
+            <div><b>{s.title}</b><p>{s.detail}</p></div>
+          </li>
+        ))}
+      </ul>
+
+      {a.set && (
+        <div class="set-box">
+          <div class="strong">{a.set.name}: come va il set</div>
+          <div class="row gap small">
+            {a.set.change_30d !== null && <span class={`trend ${trendClass(a.set.change_30d * 100)}`}>{pct(a.set.change_30d * 100)} <small>30 giorni</small></span>}
+            {a.set.change_7d !== null && <span class={`trend ${trendClass(a.set.change_7d * 100)}`}>{pct(a.set.change_7d * 100)} <small>7 giorni</small></span>}
+          </div>
+          <p class="muted small">Variazione della carta tipica, su {a.set.cards} carte del set che valgono almeno 0,50 €
+            {a.set.share_up !== null ? `; in salita il ${Math.round(a.set.share_up * 100)}%` : ""}.</p>
+          <Line points={a.set.index.map((p) => p.value)} />
+        </div>
+      )}
+
+      <div class="notes">
+        {a.notes.map((n) => <p>{n}</p>)}
+        <p>{a.disclaimer}</p>
+      </div>
+    </>
+  );
+}
+
+function PriceChart({ a }: { a: Analysis }) {
+  if (a.history.length >= 2) {
+    return (
+      <div class="chart-box">
+        <div class="chart-title">Prezzo registrato da PokeVault ({a.history.length} giorni)</div>
+        <Line points={a.history.map((h) => h.price)} tall />
+        <div class="chart-axis"><span>{date(a.history[0].day)}</span><span>{date(a.history[a.history.length - 1].day)}</span></div>
+      </div>
+    );
+  }
+  // Altezze relative tra minimo e massimo: le differenze di pochi euro devono vedersi.
+  const vals = a.averages.map((x) => x.value);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const height = (v: number) => (hi - lo < 0.005 ? 70 : 25 + ((v - lo) / (hi - lo)) * 75);
+  return (
+    <div class="chart-box">
+      <div class="chart-title">Ultimo mese su Cardmarket</div>
+      <div class="bars">
+        {a.averages.map((x) => (
+          <div class="bar">
+            <span class="bar-val">{price(x.value, a.currency)}</span>
+            <div class="bar-fill" style={{ height: `${height(x.value)}%` }} />
+            <span class="bar-label">{x.label}</span>
+          </div>
+        ))}
+      </div>
+      <p class="muted small">Lo storico giornaliero si accumula da stanotte per le carte in collezione e seguite.</p>
+    </div>
+  );
+}
+
+function Line({ points, tall = false }: { points: number[]; tall?: boolean }) {
+  if (points.length < 2) return null;
+  const w = 300, h = tall ? 90 : 44;
+  const min = Math.min(...points), max = Math.max(...points);
+  const span = max - min || 1;
+  const d = points.map((p, i) => `${i ? "L" : "M"}${(i / (points.length - 1)) * w},${h - 4 - ((p - min) / span) * (h - 8)}`).join(" ");
+  const up = points[points.length - 1] >= points[0];
+  return (
+    <svg class={`spark ${tall ? "tall" : ""}`} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <path d={d} fill="none" stroke={up ? "var(--up)" : "var(--down)"} stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+    </svg>
   );
 }

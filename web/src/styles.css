@@ -296,3 +296,38 @@ select.input { appearance: none; }
 .modal-card p { line-height: 1.4; }
 .report-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 .link { color: var(--gold); text-align: left; text-decoration: underline; }
+
+/* --- analisi "tengo o vendo" ------------------------------------------------------------------------- */
+.verdict { padding: 14px; border-radius: 16px; display: flex; flex-direction: column; gap: 4px; }
+.verdict-label { font-size: 26px; font-weight: 850; letter-spacing: -0.4px; }
+.verdict p { font-size: 14.5px; line-height: 1.4; }
+.v-hold { background: rgba(61, 220, 132, 0.12); } .v-hold .verdict-label { color: var(--up); }
+.v-neutral { background: var(--surface-2); } .v-neutral .verdict-label { color: var(--text); }
+.v-consider { background: rgba(244, 183, 64, 0.13); } .v-consider .verdict-label { color: var(--gold); }
+.v-sell { background: rgba(255, 95, 109, 0.13); } .v-sell .verdict-label { color: var(--down); }
+.prob { display: flex; flex-direction: column; gap: 6px; }
+.prob-head { display: flex; justify-content: space-between; font-weight: 750; font-size: 14px; }
+.prob-bar { height: 10px; border-radius: 6px; background: rgba(61, 220, 132, 0.35); overflow: hidden; }
+.prob-bar div { height: 100%; background: var(--down); border-radius: 6px 0 0 6px; }
+.conf-alta { color: var(--up); } .conf-media { color: var(--gold); } .conf-bassa { color: var(--down); }
+.chart-box { padding: 12px; border-radius: 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 6px; }
+.chart-title { font-size: 13px; font-weight: 700; color: var(--muted); }
+.chart-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.spark.tall { height: 90px; }
+.bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; height: 150px; align-items: end; }
+.bar-fill { min-height: 6px; }
+.bar { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; }
+.bar-fill { width: 70%; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, var(--violet), rgba(139, 109, 255, 0.35)); }
+.bar:last-child .bar-fill { background: linear-gradient(180deg, var(--gold), rgba(244, 183, 64, 0.35)); }
+.bar-val { font-size: 11px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+h3.sub { margin: 6px 0 0; font-size: 15px; }
+.signals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sig { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 12px; background: var(--surface-2); }
+.sig p { margin: 2px 0 0; font-size: 13.5px; color: var(--muted); line-height: 1.4; }
+.sig b { font-size: 14px; }
+.sig-icon { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800;
+  background: rgba(255, 255, 255, 0.06); color: var(--muted); }
+.sig-up .sig-icon { background: rgba(61, 220, 132, 0.15); color: var(--up); }
+.sig-down .sig-icon { background: rgba(255, 95, 109, 0.15); color: var(--down); }
+.set-box { padding: 12px; border-radius: 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 6px; }

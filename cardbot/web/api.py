@@ -19,6 +19,7 @@ from cardbot.db import AppSession, RecentView, Tracking, User, get_or_create_use
 from cardbot.langs import LANGS
 from cardbot.recognition.vision import VisionError
 from cardbot.web.cards import card_detail, card_image, card_label, graded_detail
+from cardbot.web.analysis import card_analysis
 from cardbot.web.collections_api import add_collection_routes, owned_for
 from cardbot.web.search import image_url, search, summary
 
@@ -160,6 +161,11 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
     async def graded(lang: str, card_id: str, variant: str = "holo", user: User = Depends(current_user),
                      c=Depends(container)) -> dict[str, Any]:
         return await graded_detail(c.prices, c.fx, lang, card_id, variant)
+
+    @router.get("/cards/{lang}/{card_id}/analysis")
+    async def analysis(lang: str, card_id: str, variant: str = "holo", user: User = Depends(current_user),
+                       session: Session = Depends(db), c=Depends(container)) -> dict[str, Any]:
+        return await card_analysis(session, c.catalog, c.prices, lang, card_id, variant)
 
     # --- scansione ------------------------------------------------------------------------------------
 
