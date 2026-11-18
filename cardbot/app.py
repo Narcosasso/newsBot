@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session, sessionmaker
@@ -12,6 +14,7 @@ from cardbot.bot.engine import Engine, Incoming
 from cardbot.catalog.tcgdex import TCGdexCatalog
 from cardbot.config import Settings, get_settings
 from cardbot.db import claim_inbound, make_engine, make_session_factory
+from cardbot.prices.fx import FxRates
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import CardMatcher
 from cardbot.recognition.readers import make_reader
@@ -29,6 +32,12 @@ class Container:
     sessions: sessionmaker[Session]
     whatsapp: WhatsAppClient
     engine: Engine
+    # Usati dall'app PokeVault (stessi oggetti del bot: cache e crediti condivisi).
+    catalog: Any = None
+    prices: Any = None
+    matcher: Any = None
+    reader: Any = None
+    fx: Any = None
 
 
 def _graded(settings: Settings):
@@ -43,12 +52,11 @@ def build_container(settings: Settings) -> Container:
     whatsapp = WhatsAppClient(settings.whatsapp_token, settings.whatsapp_phone_number_id,
                               settings.whatsapp_api_version)
     catalog = TCGdexCatalog(settings.tcgdex_base_url, settings.tcgdex_max_rps)
-    engine = Engine(
-        sessions, whatsapp,
-        make_reader(settings),
-        CardMatcher(catalog), PriceService(catalog, graded=_graded(settings)), timezone=settings.timezone,
-    )
-    return Container(settings, sessions, whatsapp, engine)
+    reader, matcher = make_reader(settings), CardMatcher(catalog)
+    prices = PriceService(catalog, graded=_graded(settings))
+    engine = Engine(sessions, whatsapp, reader, matcher, prices, timezone=settings.timezone)
+    return Container(settings, sessions, whatsapp, engine, catalog=catalog, prices=prices, matcher=matcher,
+                     reader=reader, fx=FxRates())
 
 
 async def process_event(c: Container, ev: InboundEvent) -> None:
@@ -104,6 +112,14 @@ def create_app(container: Container | None = None) -> FastAPI:
             background.add_task(process_event, c, ev)
         # Rispondiamo subito 200: l'elaborazione (foto, riconoscimento, prezzi) avviene dopo.
         return {"status": "ok"}
+
+    # App PokeVault: API e interfaccia (la cartella web/dist si crea con "npm run build" in web/).
+    from cardbot.web.api import build_api
+    app.include_router(build_api(get))
+    dist = Path((container.settings if container else get_settings()).web_dist)
+    if dist.is_dir():
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/", StaticFiles(directory=dist, html=True), name="web")
 
     return app
 

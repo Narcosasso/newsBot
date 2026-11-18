@@ -39,6 +39,11 @@ class Settings(BaseSettings):
         "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
     )
 
+    # --- App PokeVault ---
+    app_pin: str = ""        # PIN di accesso all'app (almeno 6 cifre). Vuoto = app disattivata
+    app_wa_id: str = ""      # utente WhatsApp con cui l'app condivide le carte seguite (default: primo ALLOWED_WA_IDS)
+    web_dist: str = "web/dist"  # cartella dell'interfaccia compilata
+
     # --- Bot ---
     default_langs: str = "ita,eng"
     timezone: str = "Europe/Rome"

@@ -12,7 +12,7 @@ from cardbot.alerts.sources import PriceData
 from cardbot.bot.engine import Engine, Incoming
 from cardbot.db import Notification, Tracking, TrackingTarget, User, make_engine, make_session_factory, utcnow
 from cardbot.jobs.poll import run_poll
-from cardbot.prices.graded import BASE_URL, GradedPrices, GradedQuote, quote_from_card
+from cardbot.prices.graded import BASE_URL, GradedPrices, GradedQuote, GradeStat, quote_from_card
 from cardbot.prices.service import PriceService
 from cardbot.recognition.matcher import CardMatcher
 from tests.test_engine import FakeMessenger, FakeVision
@@ -99,9 +99,11 @@ class FakeGraded:
         self.calls: list = []
 
     def _quote(self, tid: str, language: str) -> GradedQuote:
+        grades = [GradeStat("PSA", "10", self.price, 90.0, self.sales, "up"),
+                  GradeStat("PSA", "9", 20.0, 25.0, 12, "down")] if self.sales else []
         return GradedQuote(grade="psa10", tcgplayer_id=tid, card_name="Charizard ex", set_name="151",
                            language=language, price=self.price, confidence="high", median=90.0, sales=self.sales,
-                           trend="up", updated=utcnow())
+                           trend="up", updated=utcnow(), grades=grades)
 
     async def by_id(self, tid, language="english", for_chat=False):
         self.calls.append(("id", tid, language))

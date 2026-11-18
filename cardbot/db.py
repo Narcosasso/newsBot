@@ -138,6 +138,35 @@ class Notification(Base):
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class AppSession(Base):
+    """Accesso all'app PokeVault da un dispositivo: si crea con il PIN e resta valido finché non lo revochi."""
+
+    __tablename__ = "app_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)  # sha256 del token del cookie
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_agent: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class RecentView(Base):
+    """Carte aperte di recente nell'app (per la sezione "Visti di recente")."""
+
+    __tablename__ = "recent_views"
+    __table_args__ = (UniqueConstraint("user_id", "catalog_lang", "card_id", name="uq_recent_user_card"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    card_id: Mapped[str] = mapped_column(String(64))
+    catalog_lang: Mapped[str] = mapped_column(String(8))
+    name: Mapped[str] = mapped_column(String(200))
+    image: Mapped[str | None] = mapped_column(String(300))
+    set_name: Mapped[str | None] = mapped_column(String(200))
+    viewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class JobState(Base):
     """Stato persistente dei job (es. ETag e versione dell'ultimo price guide elaborato)."""
 

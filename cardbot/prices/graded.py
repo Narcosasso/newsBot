@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -26,6 +26,44 @@ CHAT_RESERVE = 20
 GRADE = "psa10"
 
 
+COMPANIES = {"psa": "PSA", "bgs": "BGS", "cgc": "CGC", "sgc": "SGC", "tag": "TAG", "ace": "ACE", "ags": "AGS",
+             "pcg": "PCG"}
+
+
+@dataclass
+class GradeStat:
+    """Statistiche di un voto (es. PSA 9, CGC 9.5) dalle vendite gradate."""
+
+    company: str     # "PSA"
+    grade: str       # "10", "9.5"
+    price: float | None
+    median: float | None
+    sales: int
+    trend: str | None
+
+    @property
+    def sort_key(self) -> float:
+        try:
+            return -float(self.grade)
+        except ValueError:
+            return 0.0
+
+
+def parse_grade_key(key: str) -> tuple[str, str] | None:
+    """'psa10' -> ('PSA', '10'), 'cgc9_5' -> ('CGC', '9.5'). None per chiavi sconosciute."""
+    letters = key.rstrip("0123456789_")
+    number = key[len(letters):].replace("_", ".")
+    if letters not in COMPANIES or not number:
+        return None
+    return COMPANIES[letters], number
+
+
+def _stat_price(stats: dict[str, Any]) -> float | None:
+    smart = stats.get("smartMarketPrice") or {}
+    value = smart.get("price") or stats.get("marketPrice7Day") or stats.get("medianPrice")
+    return round(float(value), 2) if value else None
+
+
 @dataclass
 class GradedQuote:
     grade: str                  # "psa10"
@@ -40,6 +78,7 @@ class GradedQuote:
     trend: str | None           # up | down | stable
     updated: datetime | None
     currency: str = "USD"
+    grades: list[GradeStat] = field(default_factory=list)  # tutti i voti di tutte le società
 
     @property
     def has_sales(self) -> bool:
@@ -56,6 +95,14 @@ def quote_from_card(card: dict[str, Any], language: str) -> GradedQuote:
     smart = stats.get("smartMarketPrice") or {}
     price = smart.get("price") or stats.get("marketPrice7Day") or stats.get("medianPrice")
     name = (card.get("name") or "").split(" - ")[0]
+    grades = []
+    for key, st in ((card.get("ebay") or {}).get("salesByGrade") or {}).items():
+        parsed = parse_grade_key(key)
+        if parsed and st and int(st.get("count") or 0) > 0:
+            grades.append(GradeStat(company=parsed[0], grade=parsed[1], price=_stat_price(st),
+                                    median=round(float(st["medianPrice"]), 2) if st.get("medianPrice") else None,
+                                    sales=int(st.get("count") or 0), trend=st.get("marketTrend")))
+    grades.sort(key=lambda g: (g.company, g.sort_key))
     return GradedQuote(
         grade=GRADE, tcgplayer_id=str(card.get("tcgPlayerId") or ""), card_name=name,
         set_name=card.get("setName") or "", language=language,
@@ -63,6 +110,7 @@ def quote_from_card(card: dict[str, Any], language: str) -> GradedQuote:
         median=round(float(stats["medianPrice"]), 2) if stats.get("medianPrice") else None,
         sales=int(stats.get("count") or 0), trend=stats.get("marketTrend"),
         updated=parse_datetime(stats.get("lastMarketUpdate") or (card.get("ebay") or {}).get("updatedAt")),
+        grades=grades,
     )
 
 
