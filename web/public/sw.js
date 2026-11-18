@@ -2,7 +2,7 @@
 // - pagine: prima la rete (così ricevi sempre l'ultima versione), la copia salvata solo se sei offline
 // - file /assets/ (hanno l'impronta nel nome, non cambiano mai): dalla cache
 // - /api e immagini esterne: mai in cache qui (i prezzi devono essere freschi)
-const CACHE = "pokevault-v1";
+const CACHE = "pokevault-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest"])));

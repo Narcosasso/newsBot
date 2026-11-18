@@ -2,6 +2,7 @@ import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { openCard } from "./nav";
 import type { CardSummary } from "./api";
+import { CATALOG_BADGE } from "./format";
 
 const PATHS: Record<string, ComponentChildren> = {
   search: (<><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>),
@@ -23,6 +24,8 @@ const PATHS: Record<string, ComponentChildren> = {
   brush: (<path d="M14.5 4.5l5 5-7.5 7.5-5-5zM7 12l-2.5 2.5c-1 1-1 4.5-1 4.5s3.5 0 4.5-1L10.5 15.5" />),
   link: (<><path d="M10 14l7-7M12.5 7H17v4.5" /><path d="M17 14v3.5A1.5 1.5 0 0 1 15.5 19h-9A1.5 1.5 0 0 1 5 17.5v-9A1.5 1.5 0 0 1 6.5 7H10" /></>),
   check: (<path d="M5 12.5l4.5 4.5L19 7.5" />),
+  chevron: (<path d="M9.5 6l6 6-6 6" />),
+  info: (<><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5.5M12 7.8v.4" /></>),
   logout: (<><path d="M14 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H14" /><path d="M11 12h9M17 9l3 3-3 3" /></>),
 };
 
@@ -49,7 +52,11 @@ export function CardImage({ src, alt, class: cls = "" }: { src: string | null; a
   return src && !broken ? (
     <img class={`card-img ${cls}`} src={src} alt={alt} loading="lazy" decoding="async" onError={() => setBroken(true)} />
   ) : (
-    <div class={`card-img placeholder ${cls}`}><Icon name="dex" size={32} /><span>{alt}</span></div>
+    <div class={`card-img placeholder ${cls}`}>
+      <span class="ph-mark"><Icon name="dex" size={26} /></span>
+      <span class="ph-name">{alt}</span>
+      <span class="ph-note">Immagine non disponibile</span>
+    </div>
   );
 }
 
@@ -59,7 +66,7 @@ export function CardTile({ card }: { card: CardSummary }) {
       <CardImage src={card.image} alt={card.name} />
       <span class="tile-name">{card.name}</span>
       <span class="tile-sub">
-        {card.catalog_lang === "ja" && <span class="badge-jp">JP</span>}
+        {CATALOG_BADGE[card.catalog_lang] && <span class="badge">{CATALOG_BADGE[card.catalog_lang]}</span>}
         {card.number_label ?? card.number ?? ""}
       </span>
       <span class="tile-sub">{card.set_name}</span>

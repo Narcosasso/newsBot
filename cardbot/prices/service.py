@@ -4,7 +4,8 @@ Cosa è davvero "per lingua" con dati gratuiti:
 - ITA/ENG/DEU/FRA/SPA/POR: Cardmarket le vende come un unico prodotto, quindi il prezzo è AGGREGATO su queste
   lingue. Per ENG mostriamo in più TCGplayer (mercato USA, quasi solo carte inglesi).
 - JAP: le carte giapponesi sono prodotti Cardmarket separati, quindi il prezzo è specifico.
-- KOR/CIN: nessuna fonte gratuita con prezzi.
+- KOR/CIN: Cardmarket non le vende, nessuna fonte gratuita con prezzi. Per le carte cinesi (catalogo TCGdex
+  "zh-tw", stessi codici e numeri delle giapponesi) mostriamo come riferimento la stessa carta giapponese.
 """
 
 from __future__ import annotations
@@ -80,6 +81,10 @@ class PriceService:
         card = await self._catalog.get_card(catalog_lang, card_id)
         if card is None:
             return None
+        if catalog_lang == "zh-tw":  # le cinesi non hanno vendite gradate: riferimento = stessa carta giapponese
+            twin, _ = await self._japanese_twin(card_id, catalog_lang)
+            if twin is not None:
+                card, catalog_lang = twin, "ja"
         try:
             if catalog_lang in ASIAN_CATALOGS:
                 language = "japanese" if catalog_lang == "ja" else "english"
@@ -138,7 +143,9 @@ class PriceService:
             if catalog_lang == "ja":
                 out.append(quote_card(card, variant, ["ja"], with_tcgplayer=False, catalog_lang="ja"))
             else:
-                jp_card, estimated = await self.find_equivalent(card, "ja")
+                jp_card, estimated = await self._japanese_twin(card_id, catalog_lang)
+                if jp_card is None:
+                    jp_card, estimated = await self.find_equivalent(card, "ja")
                 if jp_card is None:
                     out.append(LangQuote(langs=["ja"], card_id=None, card_label=None,
                                          notes=["Equivalente giapponese non trovato nel catalogo."]))
@@ -149,9 +156,17 @@ class PriceService:
 
         for lang in ("ko", "zh"):
             if lang in langs:
-                out.append(LangQuote(langs=[lang], card_id=None, card_label=None,
-                                     notes=["Nessuna fonte gratuita pubblica i prezzi di questa lingua."]))
+                note = ("Cardmarket non vende le carte cinesi e nessuna fonte gratuita ne pubblica i prezzi: come "
+                        "riferimento vale la stessa carta giapponese." if lang == "zh" else
+                        "Nessuna fonte gratuita pubblica i prezzi di questa lingua.")
+                out.append(LangQuote(langs=[lang], card_id=None, card_label=None, notes=[note]))
         return out
+
+    async def _japanese_twin(self, card_id: str, catalog_lang: str) -> tuple[dict[str, Any] | None, bool]:
+        """Le carte cinesi (zh-tw) hanno lo stesso codice della giapponese: è la stessa carta, non una stima."""
+        if catalog_lang != "zh-tw":
+            return None, True
+        return await self._catalog.get_card("ja", card_id), False
 
     async def find_equivalent(self, card: dict[str, Any], target_lang: str) -> tuple[dict[str, Any] | None, bool]:
         """Stessa carta in un altro catalogo: stesso Pokémon, illustratore e PS; a parità, stesso numero e rarità.

@@ -1,6 +1,5 @@
 import { useState } from "preact/hooks";
 import { api } from "../api";
-import { Icon } from "../ui";
 
 export function LoginScreen({ onDone }: { onDone: () => void }) {
   const [pin, setPin] = useState("");
@@ -25,7 +24,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <form class="login" onSubmit={submit}>
-      <div class="login-logo"><Icon name="vault" size={56} /></div>
+      <img class="login-logo" src="/icons/icon-192.png" alt="" width={104} height={104} />
       <h1>PokeVault</h1>
       <p class="muted">Inserisci il PIN per entrare. Su questo telefono te lo chiedo una volta sola.</p>
       <input class="pin" type="password" inputMode="numeric" autoComplete="current-password" placeholder="PIN"

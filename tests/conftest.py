@@ -62,4 +62,5 @@ def catalog() -> FakeCatalog:
         ("ja", CHARIZARD_FILTERS): "search_ja_charizard.json",
         ("en", CHARIZARD_FILTERS): "search_en_charizard.json",
         ("en", frozenset({"name": "Charizard ex"}.items())): "search_en_name_charizard_ex.json",
+        ("en", frozenset({"name": "Gengar ex"}.items())): "search_en_name_gengar_ex.json",
     })

@@ -16,6 +16,7 @@ import httpx
 SETS_TTL = 24 * 3600
 CARD_TTL = 3 * 3600
 SEARCH_TTL = 6 * 3600
+RETRY_DELAYS = (0.7, 2.0)  # secondi di attesa prima del 2° e del 3° tentativo
 
 
 class TCGdexCatalog:
@@ -43,12 +44,24 @@ class TCGdexCatalog:
         now = time.monotonic()
         if hit and hit[0] > now:
             return hit[1]
-        async with self._lock:
-            wait = self._last_request + self._min_interval - time.monotonic()
-            if wait > 0:
-                await asyncio.sleep(wait)
-            self._last_request = time.monotonic()
-        resp = await self._client.get(f"{self._base}{path}", params=params)
+        # TCGdex ogni tanto risponde 502/503 per qualche secondo: altri due tentativi prima di arrendersi.
+        for attempt in range(3):
+            async with self._lock:
+                wait = self._last_request + self._min_interval - time.monotonic()
+                if wait > 0:
+                    await asyncio.sleep(wait)
+                self._last_request = time.monotonic()
+            try:
+                resp = await self._client.get(f"{self._base}{path}", params=params)
+            except httpx.TransportError:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(RETRY_DELAYS[attempt])
+                continue
+            if resp.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+                await asyncio.sleep(RETRY_DELAYS[attempt])
+                continue
+            break
         if resp.status_code == 404:
             data = None
         else:

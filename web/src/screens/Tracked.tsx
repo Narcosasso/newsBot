@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { api, type TrackingInfo } from "../api";
 import { LANG_CHIPS, price } from "../format";
 import { openCard } from "../nav";
-import { Header, Icon, Spinner } from "../ui";
+import { CardImage, Header, Icon, Spinner } from "../ui";
 
 const flagOf = (code: string) => LANG_CHIPS.find((l) => l.code === code)?.flag ?? code.toUpperCase();
 
@@ -37,17 +37,20 @@ export function TrackedScreen() {
           const [name, rest] = t.label.split(" · ");
           return (
             <button class="list-row" onClick={() => openCard(t.catalog_lang, t.card_id)}>
-              <div>
+              <CardImage src={t.image ?? null} alt={name} class="thumb" />
+              <div class="list-main">
                 <div class="strong">{name}</div>
-                <div class="muted">{rest}</div>
+                <div class="muted small">{rest}</div>
+                <div class="target-list">
+                  {t.targets.map((x) => (
+                    <span class="target">
+                      <span class="target-tag">{x.source === "psa10" ? "PSA 10" : x.langs.map(flagOf).join(" ")}</span>
+                      {price(x.baseline, x.currency)}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div class="right">
-                {t.targets.map((x) => (
-                  <div class="small">
-                    {x.source === "psa10" ? "🏅 PSA 10" : x.langs.map(flagOf).join("")} {price(x.baseline, x.currency)}
-                  </div>
-                ))}
-              </div>
+              <Icon name="chevron" size={18} />
             </button>
           );
         })}

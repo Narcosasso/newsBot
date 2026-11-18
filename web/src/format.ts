@@ -51,3 +51,24 @@ export const STAGE_IT: Record<string, string> = { Basic: "Base", Stage1: "Fase 1
   VSTAR: "V ASTRO", BREAK: "TURBO", MEGA: "Mega", "V-UNION": "V-UNIONE", Restored: "Ripristinato" };
 
 export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+// Rarità come le chiama TCGdex (in inglese) -> nomi italiani usati sulle carte e da Cardmarket Italia.
+const RARITY_IT: Record<string, string> = {
+  "common": "Comune", "uncommon": "Non comune", "rare": "Rara", "rare holo": "Rara holo",
+  "holo rare": "Rara holo", "double rare": "Doppia rara", "ultra rare": "Ultra rara",
+  "illustration rare": "Rara illustrazione", "special illustration rare": "Rara illustrazione speciale",
+  "hyper rare": "Iper rara", "mega hyper rare": "Mega iper rara", "secret rare": "Rara segreta",
+  "shiny rare": "Rara cromatica", "shiny ultra rare": "Ultra rara cromatica", "ace spec rare": "Rara ASSO TATTICO",
+  "radiant rare": "Rara lucente", "rare holo v": "Rara holo V", "holo rare v": "Rara holo V",
+  "rare holo vmax": "Rara holo VMAX", "holo rare vmax": "Rara holo VMAX", "rare holo vstar": "Rara holo V ASTRO",
+  "holo rare vstar": "Rara holo V ASTRO", "full art trainer": "Allenatore full art", "promo": "Promo",
+  "rare prime": "Rara PRIME", "legend": "LEGGENDA", "none": "",
+};
+
+export function rarity(value: string | null | undefined): string {
+  if (!value) return "";
+  return RARITY_IT[value.trim().toLowerCase()] ?? value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/** Bandiera del catalogo della carta: le internazionali non hanno badge. */
+export const CATALOG_BADGE: Record<string, string> = { ja: "JP", "zh-tw": "CN" };

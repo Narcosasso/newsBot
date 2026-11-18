@@ -18,8 +18,8 @@ from cardbot.alerts.tracking import CARDMARKET, PSA10, graded_specs, target_spec
 from cardbot.db import AppSession, RecentView, Tracking, User, get_or_create_user, utcnow
 from cardbot.langs import LANGS
 from cardbot.recognition.vision import VisionError
-from cardbot.web.cards import card_detail, card_label, graded_detail
-from cardbot.web.search import search, summary
+from cardbot.web.cards import card_detail, card_image, card_label, graded_detail
+from cardbot.web.search import image_url, search, summary
 
 COOKIE = "pv_session"
 SESSION_DAYS = 400               # i browser limitano i cookie a circa 400 giorni
@@ -183,9 +183,15 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
     # --- carte seguite (avvisi) -----------------------------------------------------------------------
 
     @router.get("/tracking")
-    def list_tracking(user: User = Depends(current_user), session: Session = Depends(db)) -> dict[str, Any]:
+    async def list_tracking(user: User = Depends(current_user), session: Session = Depends(db),
+                            c=Depends(container)) -> dict[str, Any]:
         rows = session.query(Tracking).filter_by(user_id=user.id, active=True).order_by(Tracking.id).all()
-        return {"trackings": [_tracking_json(t) for t in rows]}
+        out = []
+        for t in rows:
+            card = await c.catalog.get_card(t.catalog_lang, t.card_id)  # in cache: serve solo la miniatura
+            image = await card_image(c.catalog, t.catalog_lang, card) if card else None
+            out.append({**_tracking_json(t), "image": image_url(image)})
+        return {"trackings": out}
 
     @router.put("/tracking")
     async def put_tracking(body: TrackBody, user: User = Depends(current_user), session: Session = Depends(db),

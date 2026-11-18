@@ -1,0 +1,117 @@
+{
+ "category": "Pokemon",
+ "id": "SV2a-185",
+ "illustrator": "PLANETA Mochizuki",
+ "localId": "185",
+ "name": "噴火龍ex",
+ "rarity": "Ultra Rare",
+ "set": {
+  "cardCount": {
+   "official": 165,
+   "total": 207
+  },
+  "id": "SV2a",
+  "name": "寶可夢卡牌151"
+ },
+ "variants": {
+  "firstEdition": false,
+  "holo": true,
+  "normal": false,
+  "reverse": false,
+  "wPromo": false
+ },
+ "variants_detailed": [
+  {
+   "type": "holo",
+   "size": "standard",
+   "thirdParty": {
+    "cardmarket": 719638
+   },
+   "variantId": "jr7oetx1mqug9",
+   "pricing": {
+    "cardmarket": {
+     "updated": "2026-11-18T22:16:18.987Z",
+     "unit": "EUR",
+     "idProduct": 719638,
+     "avg": 19.09,
+     "low": 12,
+     "trend": 18.36,
+     "avg1": 16.99,
+     "avg7": 18.69,
+     "avg30": 19.08,
+     "avg-holo": null,
+     "low-holo": null,
+     "trend-holo": 0,
+     "avg1-holo": null,
+     "avg7-holo": null,
+     "avg30-holo": null
+    },
+    "tcgplayer": null
+   }
+  }
+ ],
+ "dexId": [
+  6
+ ],
+ "hp": 330,
+ "types": [
+  "Fire"
+ ],
+ "stage": "Stage2",
+ "suffix": "EX",
+ "attacks": [
+  {
+   "cost": [
+    "Fire"
+   ],
+   "name": "無畏之翼",
+   "effect": "若這隻寶可夢身上放置有傷害指示物，則增加100點傷害。",
+   "damage": "60+"
+  },
+  {
+   "cost": [
+    "Fire",
+    "Fire",
+    "Fire",
+    "Fire"
+   ],
+   "name": "爆焰旋渦",
+   "effect": "選擇3個這隻寶可夢身上附加的能量，將其丟棄。",
+   "damage": 330
+  }
+ ],
+ "weaknesses": [
+  {
+   "type": "Water",
+   "value": "x2"
+  }
+ ],
+ "resistances": [],
+ "retreat": 2,
+ "regulationMark": "G",
+ "legal": {
+  "standard": false,
+  "expanded": false
+ },
+ "updated": "2026-11-12T22:13:16.876Z",
+ "pricing": {
+  "cardmarket": {
+   "updated": "2026-11-18T22:16:18.987Z",
+   "unit": "EUR",
+   "idProduct": 719638,
+   "avg": 19.09,
+   "low": 12,
+   "trend": 18.36,
+   "avg1": 16.99,
+   "avg7": 18.69,
+   "avg30": 19.08,
+   "avg-holo": null,
+   "low-holo": null,
+   "trend-holo": 0,
+   "avg1-holo": null,
+   "avg7-holo": null,
+   "avg30-holo": null
+  },
+  "tcgplayer": null
+ }
+}

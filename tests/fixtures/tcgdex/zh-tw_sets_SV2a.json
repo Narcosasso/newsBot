@@ -1,0 +1,1078 @@
+{
+ "cardCount": {
+  "firstEd": 0,
+  "holo": 79,
+  "normal": 128,
+  "official": 165,
+  "reverse": 306,
+  "total": 207
+ },
+ "cards": [
+  {
+   "id": "SV2a-001",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/001",
+   "localId": "001",
+   "name": "妙蛙種子"
+  },
+  {
+   "id": "SV2a-002",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/002",
+   "localId": "002",
+   "name": "妙蛙草"
+  },
+  {
+   "id": "SV2a-003",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/003",
+   "localId": "003",
+   "name": "妙蛙花ex"
+  },
+  {
+   "id": "SV2a-004",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/004",
+   "localId": "004",
+   "name": "小火龍"
+  },
+  {
+   "id": "SV2a-005",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/005",
+   "localId": "005",
+   "name": "火恐龍"
+  },
+  {
+   "id": "SV2a-006",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/006",
+   "localId": "006",
+   "name": "噴火龍ex"
+  },
+  {
+   "id": "SV2a-007",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/007",
+   "localId": "007",
+   "name": "傑尼龜"
+  },
+  {
+   "id": "SV2a-008",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/008",
+   "localId": "008",
+   "name": "卡咪龜"
+  },
+  {
+   "id": "SV2a-009",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/009",
+   "localId": "009",
+   "name": "水箭龜ex"
+  },
+  {
+   "id": "SV2a-010",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/010",
+   "localId": "010",
+   "name": "綠毛蟲"
+  },
+  {
+   "id": "SV2a-011",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/011",
+   "localId": "011",
+   "name": "鐵甲蛹"
+  },
+  {
+   "id": "SV2a-012",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/012",
+   "localId": "012",
+   "name": "巴大蝶"
+  },
+  {
+   "id": "SV2a-013",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/013",
+   "localId": "013",
+   "name": "獨角蟲"
+  },
+  {
+   "id": "SV2a-014",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/014",
+   "localId": "014",
+   "name": "鐵殼蛹"
+  },
+  {
+   "id": "SV2a-015",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/015",
+   "localId": "015",
+   "name": "大針蜂"
+  },
+  {
+   "id": "SV2a-016",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/016",
+   "localId": "016",
+   "name": "波波"
+  },
+  {
+   "id": "SV2a-017",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/017",
+   "localId": "017",
+   "name": "比比鳥"
+  },
+  {
+   "id": "SV2a-018",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/018",
+   "localId": "018",
+   "name": "大比鳥"
+  },
+  {
+   "id": "SV2a-019",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/019",
+   "localId": "019",
+   "name": "小拉達"
+  },
+  {
+   "id": "SV2a-020",
+   "image": "https://assets.tcgdex.net/zh-tw/SV/SV2a/020",
+   "localId": "020",
+   "name": "拉達"
+  },
+  {
+   "id": "SV2a-021",
+   "localId": "021",
+   "name": "烈雀"
+  },
+  {
+   "id": "SV2a-022",
+   "localId": "022",
+   "name": "大嘴雀"
+  },
+  {
+   "id": "SV2a-023",
+   "localId": "023",
+   "name": "阿柏蛇"
+  },
+  {
+   "id": "SV2a-024",
+   "localId": "024",
+   "name": "阿柏怪ex"
+  },
+  {
+   "id": "SV2a-025",
+   "localId": "025",
+   "name": "皮卡丘"
+  },
+  {
+   "id": "SV2a-026",
+   "localId": "026",
+   "name": "雷丘"
+  },
+  {
+   "id": "SV2a-027",
+   "localId": "027",
+   "name": "穿山鼠"
+  },
+  {
+   "id": "SV2a-028",
+   "localId": "028",
+   "name": "穿山王"
+  },
+  {
+   "id": "SV2a-029",
+   "localId": "029",
+   "name": "尼多蘭"
+  },
+  {
+   "id": "SV2a-030",
+   "localId": "030",
+   "name": "尼多娜"
+  },
+  {
+   "id": "SV2a-031",
+   "localId": "031",
+   "name": "尼多后"
+  },
+  {
+   "id": "SV2a-032",
+   "localId": "032",
+   "name": "尼多朗"
+  },
+  {
+   "id": "SV2a-033",
+   "localId": "033",
+   "name": "尼多力諾"
+  },
+  {
+   "id": "SV2a-034",
+   "localId": "034",
+   "name": "尼多王"
+  },
+  {
+   "id": "SV2a-035",
+   "localId": "035",
+   "name": "皮皮"
+  },
+  {
+   "id": "SV2a-036",
+   "localId": "036",
+   "name": "皮可西"
+  },
+  {
+   "id": "SV2a-037",
+   "localId": "037",
+   "name": "六尾"
+  },
+  {
+   "id": "SV2a-038",
+   "localId": "038",
+   "name": "九尾ex"
+  },
+  {
+   "id": "SV2a-039",
+   "localId": "039",
+   "name": "胖丁"
+  },
+  {
+   "id": "SV2a-040",
+   "localId": "040",
+   "name": "胖可丁ex"
+  },
+  {
+   "id": "SV2a-041",
+   "localId": "041",
+   "name": "超音蝠"
+  },
+  {
+   "id": "SV2a-042",
+   "localId": "042",
+   "name": "大嘴蝠"
+  },
+  {
+   "id": "SV2a-043",
+   "localId": "043",
+   "name": "走路草"
+  },
+  {
+   "id": "SV2a-044",
+   "localId": "044",
+   "name": "臭臭花"
+  },
+  {
+   "id": "SV2a-045",
+   "localId": "045",
+   "name": "霸王花"
+  },
+  {
+   "id": "SV2a-046",
+   "localId": "046",
+   "name": "派拉斯"
+  },
+  {
+   "id": "SV2a-047",
+   "localId": "047",
+   "name": "派拉斯特"
+  },
+  {
+   "id": "SV2a-048",
+   "localId": "048",
+   "name": "毛球"
+  },
+  {
+   "id": "SV2a-049",
+   "localId": "049",
+   "name": "摩魯蛾"
+  },
+  {
+   "id": "SV2a-050",
+   "localId": "050",
+   "name": "地鼠"
+  },
+  {
+   "id": "SV2a-051",
+   "localId": "051",
+   "name": "三地鼠"
+  },
+  {
+   "id": "SV2a-052",
+   "localId": "052",
+   "name": "喵喵"
+  },
+  {
+   "id": "SV2a-053",
+   "localId": "053",
+   "name": "貓老大"
+  },
+  {
+   "id": "SV2a-054",
+   "localId": "054",
+   "name": "可達鴨"
+  },
+  {
+   "id": "SV2a-055",
+   "localId": "055",
+   "name": "哥達鴨"
+  },
+  {
+   "id": "SV2a-056",
+   "localId": "056",
+   "name": "猴怪"
+  },
+  {
+   "id": "SV2a-057",
+   "localId": "057",
+   "name": "火爆猴"
+  },
+  {
+   "id": "SV2a-058",
+   "localId": "058",
+   "name": "卡蒂狗"
+  },
+  {
+   "id": "SV2a-059",
+   "localId": "059",
+   "name": "風速狗"
+  },
+  {
+   "id": "SV2a-060",
+   "localId": "060",
+   "name": "蚊香蝌蚪"
+  },
+  {
+   "id": "SV2a-061",
+   "localId": "061",
+   "name": "蚊香君"
+  },
+  {
+   "id": "SV2a-062",
+   "localId": "062",
+   "name": "蚊香泳士"
+  },
+  {
+   "id": "SV2a-063",
+   "localId": "063",
+   "name": "凱西"
+  },
+  {
+   "id": "SV2a-064",
+   "localId": "064",
+   "name": "勇基拉"
+  },
+  {
+   "id": "SV2a-065",
+   "localId": "065",
+   "name": "胡地ex"
+  },
+  {
+   "id": "SV2a-066",
+   "localId": "066",
+   "name": "腕力"
+  },
+  {
+   "id": "SV2a-067",
+   "localId": "067",
+   "name": "豪力"
+  },
+  {
+   "id": "SV2a-068",
+   "localId": "068",
+   "name": "怪力"
+  },
+  {
+   "id": "SV2a-069",
+   "localId": "069",
+   "name": "喇叭芽"
+  },
+  {
+   "id": "SV2a-070",
+   "localId": "070",
+   "name": "口呆花"
+  },
+  {
+   "id": "SV2a-071",
+   "localId": "071",
+   "name": "大食花"
+  },
+  {
+   "id": "SV2a-072",
+   "localId": "072",
+   "name": "瑪瑙水母"
+  },
+  {
+   "id": "SV2a-073",
+   "localId": "073",
+   "name": "毒刺水母"
+  },
+  {
+   "id": "SV2a-074",
+   "localId": "074",
+   "name": "小拳石"
+  },
+  {
+   "id": "SV2a-075",
+   "localId": "075",
+   "name": "隆隆石"
+  },
+  {
+   "id": "SV2a-076",
+   "localId": "076",
+   "name": "隆隆岩ex"
+  },
+  {
+   "id": "SV2a-077",
+   "localId": "077",
+   "name": "小火馬"
+  },
+  {
+   "id": "SV2a-078",
+   "localId": "078",
+   "name": "烈焰馬"
+  },
+  {
+   "id": "SV2a-079",
+   "localId": "079",
+   "name": "呆呆獸"
+  },
+  {
+   "id": "SV2a-080",
+   "localId": "080",
+   "name": "呆殼獸"
+  },
+  {
+   "id": "SV2a-081",
+   "localId": "081",
+   "name": "小磁怪"
+  },
+  {
+   "id": "SV2a-082",
+   "localId": "082",
+   "name": "三合一磁怪"
+  },
+  {
+   "id": "SV2a-083",
+   "localId": "083",
+   "name": "大蔥鴨"
+  },
+  {
+   "id": "SV2a-084",
+   "localId": "084",
+   "name": "嘟嘟"
+  },
+  {
+   "id": "SV2a-085",
+   "localId": "085",
+   "name": "嘟嘟利"
+  },
+  {
+   "id": "SV2a-086",
+   "localId": "086",
+   "name": "小海獅"
+  },
+  {
+   "id": "SV2a-087",
+   "localId": "087",
+   "name": "白海獅"
+  },
+  {
+   "id": "SV2a-088",
+   "localId": "088",
+   "name": "臭泥"
+  },
+  {
+   "id": "SV2a-089",
+   "localId": "089",
+   "name": "臭臭泥"
+  },
+  {
+   "id": "SV2a-090",
+   "localId": "090",
+   "name": "大舌貝"
+  },
+  {
+   "id": "SV2a-091",
+   "localId": "091",
+   "name": "刺甲貝"
+  },
+  {
+   "id": "SV2a-092",
+   "localId": "092",
+   "name": "鬼斯"
+  },
+  {
+   "id": "SV2a-093",
+   "localId": "093",
+   "name": "鬼斯通"
+  },
+  {
+   "id": "SV2a-094",
+   "localId": "094",
+   "name": "耿鬼"
+  },
+  {
+   "id": "SV2a-095",
+   "localId": "095",
+   "name": "大岩蛇"
+  },
+  {
+   "id": "SV2a-096",
+   "localId": "096",
+   "name": "催眠貘"
+  },
+  {
+   "id": "SV2a-097",
+   "localId": "097",
+   "name": "引夢貘人"
+  },
+  {
+   "id": "SV2a-098",
+   "localId": "098",
+   "name": "大鉗蟹"
+  },
+  {
+   "id": "SV2a-099",
+   "localId": "099",
+   "name": "巨鉗蟹"
+  },
+  {
+   "id": "SV2a-100",
+   "localId": "100",
+   "name": "霹靂電球"
+  },
+  {
+   "id": "SV2a-101",
+   "localId": "101",
+   "name": "頑皮雷彈"
+  },
+  {
+   "id": "SV2a-102",
+   "localId": "102",
+   "name": "蛋蛋"
+  },
+  {
+   "id": "SV2a-103",
+   "localId": "103",
+   "name": "椰蛋樹"
+  },
+  {
+   "id": "SV2a-104",
+   "localId": "104",
+   "name": "卡拉卡拉"
+  },
+  {
+   "id": "SV2a-105",
+   "localId": "105",
+   "name": "嘎啦嘎啦"
+  },
+  {
+   "id": "SV2a-106",
+   "localId": "106",
+   "name": "飛腿郎"
+  },
+  {
+   "id": "SV2a-107",
+   "localId": "107",
+   "name": "快拳郎"
+  },
+  {
+   "id": "SV2a-108",
+   "localId": "108",
+   "name": "大舌頭"
+  },
+  {
+   "id": "SV2a-109",
+   "localId": "109",
+   "name": "瓦斯彈"
+  },
+  {
+   "id": "SV2a-110",
+   "localId": "110",
+   "name": "雙彈瓦斯"
+  },
+  {
+   "id": "SV2a-111",
+   "localId": "111",
+   "name": "獨角犀牛"
+  },
+  {
+   "id": "SV2a-112",
+   "localId": "112",
+   "name": "鑽角犀獸"
+  },
+  {
+   "id": "SV2a-113",
+   "localId": "113",
+   "name": "吉利蛋"
+  },
+  {
+   "id": "SV2a-114",
+   "localId": "114",
+   "name": "蔓藤怪"
+  },
+  {
+   "id": "SV2a-115",
+   "localId": "115",
+   "name": "袋獸ex"
+  },
+  {
+   "id": "SV2a-116",
+   "localId": "116",
+   "name": "墨海馬"
+  },
+  {
+   "id": "SV2a-117",
+   "localId": "117",
+   "name": "海刺龍"
+  },
+  {
+   "id": "SV2a-118",
+   "localId": "118",
+   "name": "角金魚"
+  },
+  {
+   "id": "SV2a-119",
+   "localId": "119",
+   "name": "金魚王"
+  },
+  {
+   "id": "SV2a-120",
+   "localId": "120",
+   "name": "海星星"
+  },
+  {
+   "id": "SV2a-121",
+   "localId": "121",
+   "name": "寶石海星"
+  },
+  {
+   "id": "SV2a-122",
+   "localId": "122",
+   "name": "魔牆人偶"
+  },
+  {
+   "id": "SV2a-123",
+   "localId": "123",
+   "name": "飛天螳螂"
+  },
+  {
+   "id": "SV2a-124",
+   "localId": "124",
+   "name": "迷唇姐ex"
+  },
+  {
+   "id": "SV2a-125",
+   "localId": "125",
+   "name": "電擊獸"
+  },
+  {
+   "id": "SV2a-126",
+   "localId": "126",
+   "name": "鴨嘴火獸"
+  },
+  {
+   "id": "SV2a-127",
+   "localId": "127",
+   "name": "凱羅斯"
+  },
+  {
+   "id": "SV2a-128",
+   "localId": "128",
+   "name": "肯泰羅"
+  },
+  {
+   "id": "SV2a-129",
+   "localId": "129",
+   "name": "鯉魚王"
+  },
+  {
+   "id": "SV2a-130",
+   "localId": "130",
+   "name": "暴鯉龍"
+  },
+  {
+   "id": "SV2a-131",
+   "localId": "131",
+   "name": "拉普拉斯"
+  },
+  {
+   "id": "SV2a-132",
+   "localId": "132",
+   "name": "百變怪"
+  },
+  {
+   "id": "SV2a-133",
+   "localId": "133",
+   "name": "伊布"
+  },
+  {
+   "id": "SV2a-134",
+   "localId": "134",
+   "name": "水伊布"
+  },
+  {
+   "id": "SV2a-135",
+   "localId": "135",
+   "name": "雷伊布"
+  },
+  {
+   "id": "SV2a-136",
+   "localId": "136",
+   "name": "火伊布"
+  },
+  {
+   "id": "SV2a-137",
+   "localId": "137",
+   "name": "多邊獸"
+  },
+  {
+   "id": "SV2a-138",
+   "localId": "138",
+   "name": "菊石獸"
+  },
+  {
+   "id": "SV2a-139",
+   "localId": "139",
+   "name": "多刺菊石獸"
+  },
+  {
+   "id": "SV2a-140",
+   "localId": "140",
+   "name": "化石盔"
+  },
+  {
+   "id": "SV2a-141",
+   "localId": "141",
+   "name": "鐮刀盔"
+  },
+  {
+   "id": "SV2a-142",
+   "localId": "142",
+   "name": "化石翼龍"
+  },
+  {
+   "id": "SV2a-143",
+   "localId": "143",
+   "name": "卡比獸"
+  },
+  {
+   "id": "SV2a-144",
+   "localId": "144",
+   "name": "急凍鳥"
+  },
+  {
+   "id": "SV2a-145",
+   "localId": "145",
+   "name": "閃電鳥ex"
+  },
+  {
+   "id": "SV2a-146",
+   "localId": "146",
+   "name": "火焰鳥"
+  },
+  {
+   "id": "SV2a-147",
+   "localId": "147",
+   "name": "迷你龍"
+  },
+  {
+   "id": "SV2a-148",
+   "localId": "148",
+   "name": "哈克龍"
+  },
+  {
+   "id": "SV2a-149",
+   "localId": "149",
+   "name": "快龍"
+  },
+  {
+   "id": "SV2a-150",
+   "localId": "150",
+   "name": "超夢"
+  },
+  {
+   "id": "SV2a-151",
+   "localId": "151",
+   "name": "夢幻ex"
+  },
+  {
+   "id": "SV2a-152",
+   "localId": "152",
+   "name": "能量貼紙"
+  },
+  {
+   "id": "SV2a-153",
+   "localId": "153",
+   "name": "抓換臂"
+  },
+  {
+   "id": "SV2a-154",
+   "localId": "154",
+   "name": "陳舊的貝殼化石"
+  },
+  {
+   "id": "SV2a-155",
+   "localId": "155",
+   "name": "陳舊的甲殼化石"
+  },
+  {
+   "id": "SV2a-156",
+   "localId": "156",
+   "name": "陳舊的秘密琥珀"
+  },
+  {
+   "id": "SV2a-157",
+   "localId": "157",
+   "name": "安全護目鏡"
+  },
+  {
+   "id": "SV2a-158",
+   "localId": "158",
+   "name": "大氣球"
+  },
+  {
+   "id": "SV2a-159",
+   "localId": "159",
+   "name": "硬硬束帶"
+  },
+  {
+   "id": "SV2a-160",
+   "localId": "160",
+   "name": "吃剩的東西"
+  },
+  {
+   "id": "SV2a-161",
+   "localId": "161",
+   "name": "莉佳的招待"
+  },
+  {
+   "id": "SV2a-162",
+   "localId": "162",
+   "name": "坂木的領導力"
+  },
+  {
+   "id": "SV2a-163",
+   "localId": "163",
+   "name": "奈奈美的幫助"
+  },
+  {
+   "id": "SV2a-164",
+   "localId": "164",
+   "name": "正輝的輸送"
+  },
+  {
+   "id": "SV2a-165",
+   "localId": "165",
+   "name": "自行車道"
+  },
+  {
+   "id": "SV2a-166",
+   "localId": "166",
+   "name": "妙蛙種子"
+  },
+  {
+   "id": "SV2a-167",
+   "localId": "167",
+   "name": "妙蛙草"
+  },
+  {
+   "id": "SV2a-168",
+   "localId": "168",
+   "name": "小火龍"
+  },
+  {
+   "id": "SV2a-169",
+   "localId": "169",
+   "name": "火恐龍"
+  },
+  {
+   "id": "SV2a-170",
+   "localId": "170",
+   "name": "傑尼龜"
+  },
+  {
+   "id": "SV2a-171",
+   "localId": "171",
+   "name": "卡咪龜"
+  },
+  {
+   "id": "SV2a-172",
+   "localId": "172",
+   "name": "綠毛蟲"
+  },
+  {
+   "id": "SV2a-173",
+   "localId": "173",
+   "name": "皮卡丘"
+  },
+  {
+   "id": "SV2a-174",
+   "localId": "174",
+   "name": "尼多王"
+  },
+  {
+   "id": "SV2a-175",
+   "localId": "175",
+   "name": "可達鴨"
+  },
+  {
+   "id": "SV2a-176",
+   "localId": "176",
+   "name": "蚊香君"
+  },
+  {
+   "id": "SV2a-177",
+   "localId": "177",
+   "name": "豪力"
+  },
+  {
+   "id": "SV2a-178",
+   "localId": "178",
+   "name": "蔓藤怪"
+  },
+  {
+   "id": "SV2a-179",
+   "localId": "179",
+   "name": "魔牆人偶"
+  },
+  {
+   "id": "SV2a-180",
+   "localId": "180",
+   "name": "菊石獸"
+  },
+  {
+   "id": "SV2a-181",
+   "localId": "181",
+   "name": "卡比獸"
+  },
+  {
+   "id": "SV2a-182",
+   "localId": "182",
+   "name": "哈克龍"
+  },
+  {
+   "id": "SV2a-183",
+   "localId": "183",
+   "name": "超夢"
+  },
+  {
+   "id": "SV2a-184",
+   "localId": "184",
+   "name": "妙蛙花ex"
+  },
+  {
+   "id": "SV2a-185",
+   "localId": "185",
+   "name": "噴火龍ex"
+  },
+  {
+   "id": "SV2a-186",
+   "localId": "186",
+   "name": "水箭龜ex"
+  },
+  {
+   "id": "SV2a-187",
+   "localId": "187",
+   "name": "阿柏怪ex"
+  },
+  {
+   "id": "SV2a-188",
+   "localId": "188",
+   "name": "九尾ex"
+  },
+  {
+   "id": "SV2a-189",
+   "localId": "189",
+   "name": "胖可丁ex"
+  },
+  {
+   "id": "SV2a-190",
+   "localId": "190",
+   "name": "胡地ex"
+  },
+  {
+   "id": "SV2a-191",
+   "localId": "191",
+   "name": "隆隆岩ex"
+  },
+  {
+   "id": "SV2a-192",
+   "localId": "192",
+   "name": "袋獸ex"
+  },
+  {
+   "id": "SV2a-193",
+   "localId": "193",
+   "name": "迷唇姐ex"
+  },
+  {
+   "id": "SV2a-194",
+   "localId": "194",
+   "name": "閃電鳥ex"
+  },
+  {
+   "id": "SV2a-195",
+   "localId": "195",
+   "name": "夢幻ex"
+  },
+  {
+   "id": "SV2a-196",
+   "localId": "196",
+   "name": "莉佳的招待[支援者]"
+  },
+  {
+   "id": "SV2a-197",
+   "localId": "197",
+   "name": "坂木的領導力[支援者]"
+  },
+  {
+   "id": "SV2a-198",
+   "localId": "198",
+   "name": "奈奈美的幫助[支援者]"
+  },
+  {
+   "id": "SV2a-199",
+   "localId": "199",
+   "name": "正輝的輸送[支援者]"
+  },
+  {
+   "id": "SV2a-200",
+   "localId": "200",
+   "name": "妙蛙花ex"
+  },
+  {
+   "id": "SV2a-201",
+   "localId": "201",
+   "name": "噴火龍ex"
+  },
+  {
+   "id": "SV2a-202",
+   "localId": "202",
+   "name": "水箭龜ex"
+  },
+  {
+   "id": "SV2a-203",
+   "localId": "203",
+   "name": "胡地ex"
+  },
+  {
+   "id": "SV2a-204",
+   "localId": "204",
+   "name": "閃電鳥ex"
+  },
+  {
+   "id": "SV2a-205",
+   "localId": "205",
+   "name": "夢幻ex"
+  },
+  {
+   "id": "SV2a-206",
+   "localId": "206",
+   "name": "莉佳的招待[支援者]"
+  },
+  {
+   "id": "SV2a-207",
+   "localId": "207",
+   "name": "坂木的領導力[支援者]"
+  }
+ ],
+ "id": "SV2a",
+ "legal": {
+  "expanded": false,
+  "standard": false
+ },
+ "name": "寶可夢卡牌151",
+ "releaseDate": "2023-06-30",
+ "serie": {
+  "id": "SV",
+  "name": "朱&紫系列"
+ }
+}

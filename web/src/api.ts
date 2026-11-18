@@ -47,6 +47,7 @@ export type TrackingInfo = {
   label: string;
   langs: string[];
   psa: boolean;
+  image?: string | null;
   targets: { source: string; langs: string[]; baseline: number | null; currency: string }[];
 };
 
@@ -57,6 +58,7 @@ export type CardDetail = {
   label: string;
   image: string | null;
   image_small: string | null;
+  image_from_other_lang?: boolean;
   number: string;
   rarity: string | null;
   illustrator: string | null;

@@ -270,3 +270,10 @@ async def test_news_shows_psa10_in_dollars(db_with_psa):
 def test_cardmarket_only_job_still_works_without_graded():
     data = PriceData(source="cardmarket_price_guide", version="v1", entries={})
     assert data.entries == {}
+
+
+async def test_chinese_card_uses_the_japanese_print_for_graded(catalog):
+    """Le carte cinesi gradate non hanno vendite: riferimento alla stessa carta giapponese, non a quella inglese."""
+    graded = FakeGraded()
+    q = await PriceService(catalog, graded=graded).graded_quote("SV2a-185", "zh-tw", "holo")
+    assert q is not None and graded.calls[-1][-1] == "japanese"

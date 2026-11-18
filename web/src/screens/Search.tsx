@@ -7,6 +7,7 @@ const FILTERS = [
   { id: "all", label: "Tutte" },
   { id: "en", label: "🇬🇧 Internazionali" },
   { id: "ja", label: "🇯🇵 Giapponesi" },
+  { id: "zh", label: "🇨🇳 Cinesi" },
 ];
 
 // La ricerca resta quando torni indietro da una carta.
@@ -88,12 +89,13 @@ export function SearchScreen() {
       {!busy && results !== null && results.length === 0 && (
         <div class="empty small">
           <p>Nessuna carta trovata per «{q.trim()}».</p>
-          <p class="muted">Prova con il nome inglese, il numero (es. <b>30C 154</b>) o <b>set:</b> e il codice.</p>
+          <p class="muted">Prova con il nome inglese, il numero (es. <b>30C 154</b>) o <b>set:</b> e il codice.
+            Per le carte cinesi scrivi il nome in cinese (es. <b>耿鬼</b>) o il codice del set giapponese.</p>
         </div>
       )}
       {!busy && results && results.length > 0 && <CardGrid cards={results} />}
 
-      {results === null && (
+      {results === null && !busy && (
         <>
           <div class="empty small">
             <Icon name="search" size={40} />

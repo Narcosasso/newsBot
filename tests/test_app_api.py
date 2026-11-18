@@ -207,3 +207,60 @@ def test_tracking_is_shared_with_the_whatsapp_user(make_client):
     from cardbot.db import Tracking
     with sessions() as s:
         assert s.query(Tracking).one().user.wa_id == "393330000000"
+
+
+def test_tracking_list_has_thumbnails(make_client):
+    client, _ = logged(make_client)
+    client.put("/api/tracking", json={"card_id": "sv03.5-006", "catalog_lang": "en", "variant": "holo",
+                                      "langs": ["it"]})
+    row = client.get("/api/tracking").json()["trackings"][0]
+    assert row["image"] == "https://assets.tcgdex.net/en/sv/sv03.5/006/low.webp"
+
+
+# --- carte Pocket e carte cinesi -------------------------------------------------------------------------------
+
+def test_search_skips_pocket_cards(make_client):
+    """Pokémon TCG Pocket è solo digitale: niente prezzi, quindi fuori dai risultati."""
+    client, _ = logged(make_client)
+    cards = client.get("/api/search", params={"q": "Gengar ex", "lang": "en"}).json()["cards"]
+    assert [c["id"] for c in cards] == ["sv03.5-199"]
+
+
+def test_search_chinese_by_code_uses_japanese_image_when_missing(make_client):
+    client, _ = logged(make_client)
+    cards = client.get("/api/search", params={"q": "SV2a 185", "lang": "zh"}).json()["cards"]
+    assert cards[0]["id"] == "SV2a-185" and cards[0]["catalog_lang"] == "zh-tw"
+    assert cards[0]["name"] == "噴火龍ex"
+    assert cards[0]["image"] == "https://assets.tcgdex.net/ja/SV/SV2a/185/low.webp"
+
+
+def test_search_chinese_set_fills_images(make_client):
+    client, _ = logged(make_client)
+    cards = client.get("/api/search", params={"q": "set:SV2a", "lang": "zh"}).json()["cards"]
+    by_id = {c["id"]: c for c in cards}
+    assert len(cards) > 200
+    assert by_id["SV2a-006"]["image"] == "https://assets.tcgdex.net/zh-tw/SV/SV2a/006/low.webp"
+    assert by_id["SV2a-185"]["image"] == "https://assets.tcgdex.net/ja/SV/SV2a/185/low.webp"
+
+
+def test_chinese_card_detail_uses_the_japanese_twin_for_prices(make_client):
+    client, _ = logged(make_client)
+    d = client.get("/api/cards/zh-tw/SV2a-185").json()
+    assert d["image"] == "https://assets.tcgdex.net/ja/SV/SV2a/185/high.webp"
+    groups = d["variants"][0]["groups"]
+    zh, ja = groups[0], groups[1]
+    assert zh["langs"] == ["zh"] and zh["cardmarket"] is None and "giapponese" in zh["notes"][0]
+    assert ja["langs"] == ["ja"] and ja["card_id"] == "SV2a-185" and ja["estimated"] is False
+    assert ja["cardmarket"]["id_product"] == 719638
+
+
+def test_catalog_down_gives_a_clear_message(make_client, catalog):
+    import httpx
+
+    async def down(*args, **kwargs):
+        raise httpx.ConnectError("TCGdex non risponde")
+
+    client, _ = logged(make_client)
+    catalog.get_card = down
+    r = client.get("/api/cards/en/sv03.5-006")
+    assert r.status_code == 503 and "riprova" in r.json()["detail"]

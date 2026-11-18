@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { api, type CardDetail, type Graded, type PriceGroup, type TrackingInfo } from "../api";
-import { date, LANG_CHIPS, pct, plural, price, STAGE_IT, trendClass, TYPE_IT } from "../format";
+import { CATALOG_BADGE, date, LANG_CHIPS, pct, plural, price, rarity, STAGE_IT, trendClass, TYPE_IT } from "../format";
 import { CardImage, Icon, Spinner } from "../ui";
 import { searchFor } from "./Search";
 
@@ -61,21 +61,35 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
         {!detail && !error && <Spinner label="Carico la carta…" />}
         {detail && (
           <>
-            <div class="hero"><CardImage src={detail.image} alt={detail.name} class="big" /></div>
+            <div class="hero">
+              <CardImage src={detail.image} alt={detail.name} class="big" />
+              {detail.image_from_other_lang && (
+                <p class="hero-note">Foto della versione {detail.catalog_lang === "zh-tw" ? "giapponese" : "inglese"}: quella in questa lingua non è disponibile.</p>
+              )}
+            </div>
 
             <div class="card-meta">
-              <div class="row gap">
-                <span class="number">#{detail.number}{detail.set.official ? <small> / {detail.set.official}</small> : null}</span>
-                {detail.rarity && <span class="pill">{detail.rarity}</span>}
+              <div class="title-row">
+                <span class="number">{detail.number}{detail.set.official ? <small>/{detail.set.official}</small> : null}</span>
+                {CATALOG_BADGE[detail.catalog_lang] && <span class="badge big">{CATALOG_BADGE[detail.catalog_lang]}</span>}
+                {rarity(detail.rarity) && <span class="pill gold">{rarity(detail.rarity)}</span>}
               </div>
+              <div class="set-line">{detail.set.name} · {detail.set.code}</div>
+            </div>
+
+            <div class="info-list">
               {detail.illustrator && (
-                <button class="link-row" onClick={() => searchFor(detail.illustrator!)}>
-                  <Icon name="brush" size={18} /> <u>{detail.illustrator}</u>
+                <button class="info-row" onClick={() => searchFor(detail.illustrator!)}>
+                  <Icon name="brush" size={20} />
+                  <span class="info-text"><small>Illustratore</small>{detail.illustrator}</span>
+                  <Icon name="chevron" size={18} />
                 </button>
               )}
               {detail.dex_ids.map((n) => (
-                <button class="link-row" onClick={() => searchFor(`#${n}`)}>
-                  <span class="dex">#{String(n).padStart(4, "0")}</span> <u>tutte le carte di questo Pokémon</u>
+                <button class="info-row" onClick={() => searchFor(`#${n}`)}>
+                  <Icon name="dex" size={20} />
+                  <span class="info-text"><small>Pokédex n. {n}</small>Tutte le carte di questo Pokémon</span>
+                  <Icon name="chevron" size={18} />
                 </button>
               ))}
             </div>
@@ -89,12 +103,12 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
             )}
 
             <section class="panel">
-              <h2>Prezzi {variant && detail.variants.length === 1 ? <small>· {variant.label}</small> : null}</h2>
+              <h2>Prezzi {variant && detail.variants.length === 1 ? <span class="pill">{variant.label}</span> : null}</h2>
               {variant?.groups.map((g) => <PriceBlock group={g} />)}
               <PriceNotes groups={variant?.groups ?? []} />
             </section>
 
-            <GradedPanel graded={graded} />
+            <GradedPanel graded={graded} chinese={detail.catalog_lang === "zh-tw"} />
 
             <FollowPanel detail={detail} variant={variant?.variant ?? "holo"}
               psaAvailable={!!graded?.grades?.some((g) => g.company === "PSA" && g.grade === "10")}
@@ -108,7 +122,8 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
             <section class="panel">
               <h2>Espansione</h2>
               <div class="set-row">
-                {detail.set.logo && <img class="set-logo" src={detail.set.logo} alt="" loading="lazy" />}
+                {detail.set.logo && <img class="set-logo" src={detail.set.logo} alt="" loading="lazy"
+                  onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />}
                 <div>
                   <div class="strong">{detail.set.name} <span class="code">{detail.set.code}</span></div>
                   <div class="muted">{detail.set.serie ?? ""}{detail.set.release_date ? ` · uscita ${date(detail.set.release_date)}` : ""}</div>
@@ -122,7 +137,8 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
               <h2>Vedi sui marketplace</h2>
               <div class="markets">
                 {withTcgplayer(detail.marketplaces, graded).map((m) => (
-                  <a class="btn ghost" href={m.url} target="_blank" rel="noopener noreferrer">{m.name} <Icon name="link" size={16} /></a>
+                  <a class="info-row" href={m.url} target="_blank" rel="noopener noreferrer">
+                    <span class="info-text">{m.name}</span><Icon name="link" size={18} /></a>
                 ))}
               </div>
             </section>
@@ -137,27 +153,41 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
 function PriceBlock({ group }: { group: PriceGroup }) {
   const cm = group.cardmarket;
   const tp = group.tcgplayer;
+  const twin = group.card_label?.split(" · ")[1];
   return (
     <div class="price-block">
-      <div class="price-head">
-        <span>{group.label}</span>
-        {group.estimated && group.card_label && <small class="muted">{group.card_label.split(" · ")[1]}</small>}
-      </div>
+      <div class="price-head">{group.label}</div>
+      {group.estimated && twin && <div class="price-twin">Abbinata a: {twin}</div>}
       {cm ? (
         <>
-          <div class="price-main">{price(cm.trend ?? cm.avg7 ?? cm.avg, cm.currency)}<small>prezzo di mercato</small></div>
-          <div class="price-sub">da {price(cm.low, cm.currency)} · media vendite {price(cm.avg, cm.currency)}</div>
+          <div class="price-main">{price(cm.trend ?? cm.avg7 ?? cm.avg, cm.currency)}</div>
+          <div class="price-caption">prezzo di mercato su Cardmarket</div>
+          <div class="price-grid">
+            <div><small>Minimo</small>{price(cm.low, cm.currency)}</div>
+            <div><small>Media vendite</small>{price(cm.avg, cm.currency)}</div>
+            <div><small>Media 30 gg</small>{price(cm.avg30, cm.currency)}</div>
+          </div>
           <div class="price-trend">
-            <span class={trendClass(cm.change_7d)}>{pct(cm.change_7d)} <small>vs media 7 gg</small></span>
-            <span class={trendClass(cm.change_30d)}>{pct(cm.change_30d)} <small>vs media 30 gg</small></span>
+            <Trend value={cm.change_7d} label="7 giorni" />
+            <Trend value={cm.change_30d} label="30 giorni" />
           </div>
         </>
       ) : (
-        <p class="muted">{group.notes[0] ?? "Nessun prezzo su Cardmarket per questa versione."}</p>
+        <p class="info-box"><Icon name="info" size={18} />
+          <span>{group.notes[0] ?? "Nessun prezzo su Cardmarket per questa versione."}</span></p>
       )}
-      {tp && <div class="price-sub">🇺🇸 TCGplayer: {price(tp.market, tp.currency)} · da {price(tp.low, tp.currency)}</div>}
+      {tp && (tp.market !== null || tp.low !== null) && (
+        <div class="price-extra">🇺🇸 TCGplayer <b>{price(tp.market, tp.currency)}</b>
+          {tp.low !== null && <span class="muted"> · da {price(tp.low, tp.currency)}</span>}</div>
+      )}
     </div>
   );
+}
+
+function Trend({ value, label }: { value: number | null; label: string }) {
+  const cls = trendClass(value);
+  const arrow = cls === "up" ? "↗" : cls === "down" ? "↘" : "→";
+  return <span class={`trend ${cls}`}>{arrow} {pct(value)} <small>{label}</small></span>;
 }
 
 function PriceNotes({ groups }: { groups: PriceGroup[] }) {
@@ -165,15 +195,15 @@ function PriceNotes({ groups }: { groups: PriceGroup[] }) {
   return (
     <div class="notes">
       {groups.some((g) => g.aggregated) && (
-        <p>Cardmarket non distingue italiano, inglese, tedesco, francese, spagnolo e portoghese: il prezzo è lo stesso.</p>
+        <p>ITA, ENG, DEU, FRA, SPA e POR hanno lo stesso prezzo: Cardmarket le vende come un unico prodotto.</p>
       )}
-      {groups.some((g) => g.estimated) && <p>La versione in un'altra lingua è abbinata in automatico (stessa illustrazione).</p>}
-      {updated && <p>Prezzi Cardmarket del {date(updated, true)}.</p>}
+      {groups.some((g) => g.estimated) && <p>Le versioni «abbinate» sono la stessa illustrazione in un altro set.</p>}
+      {updated && <p>Aggiornati il {date(updated, true)}. Andamento rispetto alla media delle vendite.</p>}
     </div>
   );
 }
 
-function GradedPanel({ graded }: { graded: Graded | null }) {
+function GradedPanel({ graded, chinese }: { graded: Graded | null; chinese: boolean }) {
   const [company, setCompany] = useState("PSA");
   const companies = graded?.companies ?? [];
   const current = companies.includes(company) ? company : companies[0];
@@ -194,14 +224,20 @@ function GradedPanel({ graded }: { graded: Graded | null }) {
               <div class="grade">
                 <div class="grade-head">{g.company} <b>{g.grade}</b></div>
                 <div class="grade-price">{g.price_eur !== null ? price(g.price_eur) : price(g.price_usd, "USD")}</div>
-                <div class="grade-sub">{[g.price_eur !== null ? price(g.price_usd, "USD") : null,
-                  plural(g.sales, "vendita", "vendite")].filter(Boolean).join(" · ")}
-                  {g.trend === "up" ? " ↗" : g.trend === "down" ? " ↘" : ""}</div>
+                {g.price_eur !== null && <div class="grade-sub">{price(g.price_usd, "USD")}</div>}
+                <div class="grade-sub">{plural(g.sales, "vendita", "vendite")}
+                  {g.trend === "up" ? <span class="up"> ↗</span> : g.trend === "down" ? <span class="down"> ↘</span> : ""}</div>
               </div>
             ))}
           </div>
-          <p class="notes">Stampa {graded.print}: vendite eBay e Fanatics negli USA.
-            {graded.usd_per_eur ? ` Convertite in euro al cambio BCE del ${date(graded.fx_date)} (1 € = ${graded.usd_per_eur.toLocaleString("it-IT")} $).` : ""}</p>
+          <div class="notes">
+            <p>{chinese
+              ? "Le carte cinesi gradate non hanno vendite registrate: come riferimento, la stampa giapponese venduta su eBay e Fanatics negli USA."
+              : `Stampa ${graded.print}: vendite su eBay e Fanatics negli USA.`}</p>
+            {graded.usd_per_eur
+              ? <p>In euro al cambio BCE del {date(graded.fx_date)} (1 € = {graded.usd_per_eur.toLocaleString("it-IT")} $).</p>
+              : <p>Cambio euro non disponibile ora: prezzi in dollari.</p>}
+          </div>
         </>
       )}
     </section>

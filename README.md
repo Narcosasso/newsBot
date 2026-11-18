@@ -120,8 +120,13 @@ Usa lo stesso database del bot: **le carte seguite sono le stesse** su WhatsApp 
 
 Cosa fa oggi (fase 1):
 
-- **Cerca**: per nome ("Gengar ex"), codice ("SV2a 201", "30C 154"), numero Pokédex ("#94"), illustratore,
-  set ("set:sv2a"); filtro carte internazionali / giapponesi; ultime carte viste;
+- **Cerca**: per nome ("Gengar ex", o in cinese "耿鬼"), codice ("SV2a 201", "30C 154"), numero Pokédex ("#94"),
+  illustratore, set ("set:sv2a"); filtro carte internazionali / giapponesi / cinesi; ultime carte viste.
+  Le carte di Pokémon TCG Pocket (solo digitali) non compaiono;
+- **Carte cinesi** (cinese tradizionale, catalogo TCGdex): Cardmarket non le vende e nessuna fonte gratuita ne
+  pubblica i prezzi, quindi la scheda mostra come riferimento la stessa carta giapponese (stesso codice e numero) e
+  l'equivalente internazionale. Se manca la foto cinese si usa quella giapponese. Le carte cinesi semplificate
+  (Cina continentale) non sono ancora nel catalogo;
 - **Scheda carta**: immagine, prezzi Cardmarket per lingua (prezzo di mercato, minimo, media vendite,
   andamento 7 e 30 giorni), **carte gradate** per società e voto (PSA, CGC, BGS, TAG, ACE…) convertite in euro
   col cambio BCE del giorno, statistiche, set, link a Cardmarket / TCGplayer / eBay;

@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, sessionmaker
 
 from cardbot.bot.engine import Engine, Incoming
@@ -116,6 +118,13 @@ def create_app(container: Container | None = None) -> FastAPI:
     # App PokeVault: API e interfaccia (la cartella web/dist si crea con "npm run build" in web/).
     from cardbot.web.api import build_api
     app.include_router(build_api(get))
+
+    @app.exception_handler(httpx.HTTPError)
+    async def upstream_down(request: Request, exc: httpx.HTTPError):
+        # Una fonte esterna (catalogo, prezzi) non risponde: messaggio chiaro invece di "Errore 500".
+        log.warning("Fonte esterna non disponibile per %s: %s", request.url.path, exc)
+        return JSONResponse({"detail": "Il catalogo delle carte non risponde in questo momento: riprova tra "
+                                       "qualche secondo."}, status_code=503)
     dist = Path((container.settings if container else get_settings()).web_dist)
     if dist.is_dir():
         from fastapi.staticfiles import StaticFiles

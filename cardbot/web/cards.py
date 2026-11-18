@@ -12,7 +12,7 @@ from cardbot.prices.fx import FxRates
 from cardbot.prices.models import CardmarketQuote, LangQuote, TCGplayerQuote
 from cardbot.prices.service import PriceService, tcgplayer_id
 from cardbot.variants import LABELS_IT, variants_of
-from cardbot.web.search import _logo, image_url
+from cardbot.web.search import ZH, _logo, image_url
 
 
 def iso(dt: datetime | None) -> str | None:
@@ -67,26 +67,38 @@ def marketplaces(card: dict[str, Any], en_card: dict[str, Any] | None, variant: 
     return links
 
 
+async def card_image(catalog: Catalog, lang: str, card: dict[str, Any]) -> str | None:
+    """Immagine della carta; se manca nella sua lingua, quella della stessa carta in un'altra lingua."""
+    if card.get("image"):
+        return card["image"]
+    fallback = "ja" if lang == ZH else ("en" if lang != "en" else None)
+    other = await catalog.get_card(fallback, card["id"]) if fallback else None
+    return (other or {}).get("image")
+
+
 async def card_detail(catalog: Catalog, prices: PriceService, lang: str, card_id: str) -> dict[str, Any] | None:
     card = await catalog.get_card(lang, card_id)
     if card is None:
         return None
+    image = await card_image(catalog, lang, card)
     set_brief = card.get("set") or {}
     set_detail = await catalog.get_set(lang, set_brief.get("id", "")) or {}
-    en_card = card if lang == "en" else (await catalog.get_card("en", card_id) if lang not in ("ja", "zh-tw")
+    en_card = card if lang == "en" else (await catalog.get_card("en", card_id) if lang not in ("ja", ZH)
                                          else None)
     variants = variants_of(card) or ["normal"]
-    price_langs = ["ja", "it", "en"] if lang == "ja" else ["it", "en", "ja"]
+    price_langs = {"ja": ["ja", "it", "en"], ZH: ["zh", "ja", "it", "en"]}.get(lang, ["it", "en", "ja"])
     by_variant = []
     for v in variants:
         quotes = await prices.quotes(card_id, lang, v, price_langs, with_graded=False)
+        quotes.sort(key=lambda q: min(price_langs.index(x) for x in q.langs if x in price_langs))
         by_variant.append({"variant": v, "label": LABELS_IT.get(v, v), "groups": [group_json(q) for q in quotes]})
 
     serie = set_detail.get("serie") or {}
     total = (set_detail.get("cardCount") or set_brief.get("cardCount") or {})
     return {
         "id": card["id"], "catalog_lang": lang, "name": card.get("name", ""), "label": card_label(card),
-        "image": image_url(card.get("image"), "high"), "image_small": image_url(card.get("image")),
+        "image": image_url(image, "high"), "image_small": image_url(image),
+        "image_from_other_lang": bool(image) and image != card.get("image"),
         "number": card.get("localId", ""), "rarity": card.get("rarity"), "illustrator": card.get("illustrator"),
         "dex_ids": card.get("dexId") or [], "category": card.get("category"),
         "stats": {

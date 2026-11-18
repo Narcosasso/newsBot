@@ -1,4 +1,8 @@
-"""Ricerca carte per l'app: nome, #Pokédex, illustratore, set:codice, oppure codice e numero ("30C 154")."""
+"""Ricerca carte per l'app: nome, #Pokédex, illustratore, set:codice, oppure codice e numero ("30C 154").
+
+Cataloghi: inglese (carte internazionali), giapponese e cinese tradizionale (TCGdex "zh-tw", che usa gli stessi
+codici set e numeri delle giapponesi). Le carte di Pokémon TCG Pocket (solo digitali, senza prezzi) sono escluse.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +16,9 @@ from cardbot.recognition.text_query import parse_query
 
 MAX_RESULTS = 60
 JAPANESE = re.compile(r"[぀-ヿ一-鿿]")
+KANA = re.compile(r"[぀-ヿ]")
+POCKET_SET = re.compile(r"^(?:[AB]\d+[a-z]?|P-[AB])$")
+ZH = "zh-tw"
 DEX_RE = re.compile(r"^#?\s*0*(\d{1,4})$")
 SET_RE = re.compile(r"^set:\s*(.+)$", re.IGNORECASE)
 
@@ -22,7 +29,25 @@ def image_url(base: str | None, quality: str = "low") -> str | None:
 
 
 def catalogs_for(lang_filter: str) -> list[str]:
-    return {"en": ["en"], "ja": ["ja"]}.get(lang_filter, ["en", "ja"])
+    return {"en": ["en"], "ja": ["ja"], "zh": [ZH]}.get(lang_filter, ["en", "ja"])
+
+
+def is_pocket(card: dict[str, Any]) -> bool:
+    """Carte di Pokémon TCG Pocket (gioco solo digitale): set A1, A2a, B1, P-A…, immagini sotto /tcgp/."""
+    return "/tcgp/" in (card.get("image") or "") or bool(POCKET_SET.match(card.get("id", "").rsplit("-", 1)[0]))
+
+
+async def fill_missing_images(catalog: Catalog, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Le carte cinesi spesso non hanno la foto: usiamo quella giapponese (stesso set e numero, stessa carta)."""
+    missing = {r["set_id"] for r in rows if r["catalog_lang"] == ZH and not r["image"]}
+    if not missing:
+        return rows
+    sets = await asyncio.gather(*(catalog.get_set("ja", s) for s in missing))
+    images = {c["id"]: c.get("image") for s in sets if s for c in s.get("cards") or []}
+    for r in rows:
+        if r["catalog_lang"] == ZH and not r["image"]:
+            r["image"] = image_url(images.get(r["id"]))
+    return rows
 
 
 async def _set_index(catalog: Catalog, lang: str) -> dict[str, tuple[int, dict[str, Any]]]:
@@ -54,13 +79,13 @@ async def _rank(catalog: Catalog, results: list[tuple[str, dict[str, Any]]]) -> 
     seen, rows = set(), []
     for lang, card in results:
         key = (lang, card["id"])
-        if key in seen:
+        if key in seen or is_pocket(card):
             continue
         seen.add(key)
         pos, info = indexes[lang].get(card["id"].rsplit("-", 1)[0], (-1, None))
         rows.append((pos, normalize_number(card.get("localId")), summary(card, lang, info)))
     rows.sort(key=lambda r: (-r[0], r[1].zfill(6)))
-    return [r[2] for r in rows[:MAX_RESULTS]]
+    return await fill_missing_images(catalog, [r[2] for r in rows[:MAX_RESULTS]])
 
 
 async def search(catalog: Catalog, matcher: CardMatcher, q: str, lang_filter: str = "all") -> list[dict[str, Any]]:
@@ -80,13 +105,17 @@ async def search(catalog: Catalog, matcher: CardMatcher, q: str, lang_filter: st
     query = parse_query(q)
     if query and query.is_specific:  # "30C 154", "Gengar ex 154/128"
         result = await matcher.match_text(query)
-        cards = await asyncio.gather(*(catalog.get_card(c.catalog_lang, c.card_id) for c in result.candidates))
-        hits = [(c.catalog_lang, card) for c, card in zip(result.candidates, cards) if card
-                and c.catalog_lang in langs + ["it"]]
+        wanted = [(ZH if ZH in langs and c.catalog_lang == "ja" else c.catalog_lang, c.card_id)
+                  for c in result.candidates]  # le cinesi hanno gli stessi codici delle giapponesi
+        cards = await asyncio.gather(*(catalog.get_card(lang, cid) for lang, cid in wanted))
+        hits = [(lang, card) for (lang, _), card in zip(wanted, cards) if card and lang in langs + ["it"]]
         if hits:
             return await _rank(catalog, hits)
 
-    name_langs = [lang for lang in langs if (lang == "ja") == bool(JAPANESE.search(q))] or langs
+    if JAPANESE.search(q) and lang_filter == "all":
+        # Ideogrammi: giapponese, e anche cinese se non ci sono kana (es. 耿鬼 = Gengar in cinese).
+        langs = ["ja"] if KANA.search(q) else ["ja", ZH]
+    name_langs = [lang for lang in langs if (lang != "en") == bool(JAPANESE.search(q))] or langs
     tasks = [catalog.search_cards(lang, {"name": q}) for lang in name_langs]
     tasks += [catalog.search_cards(lang, {"illustrator": q}) for lang in name_langs]
     found = await asyncio.gather(*tasks)
@@ -107,6 +136,6 @@ async def _search_set(catalog: Catalog, term: str, langs: list[str]) -> list[dic
                 next((s for s in sets if low in s.get("name", "").lower()), None)
         if match:
             detail = await catalog.get_set(lang, match["id"])
-            cards = (detail or {}).get("cards") or []
-            return [summary(c, lang, detail) for c in cards][:400]
+            cards = [c for c in (detail or {}).get("cards") or [] if not is_pocket(c)]
+            return await fill_missing_images(catalog, [summary(c, lang, detail) for c in cards][:400])
     return []
