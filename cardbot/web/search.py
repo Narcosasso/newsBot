@@ -10,6 +10,7 @@ import asyncio
 import re
 from typing import Any
 
+from cardbot import images
 from cardbot.catalog.base import Catalog
 from cardbot.recognition.matcher import CardMatcher, normalize_number
 from cardbot.recognition.text_query import parse_query
@@ -24,8 +25,14 @@ SET_RE = re.compile(r"^set:\s*(.+)$", re.IGNORECASE)
 
 
 def image_url(base: str | None, quality: str = "low") -> str | None:
-    """TCGdex dà la base dell'immagine: si aggiunge qualità e formato (low=245px, high=600px)."""
-    return f"{base}/{quality}.webp" if base else None
+    """TCGdex dà la base dell'immagine: si aggiunge qualità e formato (low=245px, high=600px).
+
+    Le immagini di riserva di Scrydex hanno formati propri (small / medium)."""
+    if not base:
+        return None
+    if images.is_scrydex(base):
+        return images.sized(base, quality)
+    return f"{base}/{quality}.webp"
 
 
 def catalogs_for(lang_filter: str) -> list[str]:
@@ -38,15 +45,17 @@ def is_pocket(card: dict[str, Any]) -> bool:
 
 
 async def fill_missing_images(catalog: Catalog, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Le carte cinesi spesso non hanno la foto: usiamo quella giapponese (stesso set e numero, stessa carta)."""
+    """Foto mancanti: per le cinesi quella giapponese (stessa carta), poi Scrydex per tutte."""
     missing = {r["set_id"] for r in rows if r["catalog_lang"] == ZH and not r["image"]}
     if not missing:
+        await images.resolver.fill(rows)
         return rows
     sets = await asyncio.gather(*(catalog.get_set("ja", s) for s in missing))
-    images = {c["id"]: c.get("image") for s in sets if s for c in s.get("cards") or []}
+    found = {c["id"]: c.get("image") for s in sets if s for c in s.get("cards") or []}
     for r in rows:
         if r["catalog_lang"] == ZH and not r["image"]:
-            r["image"] = image_url(images.get(r["id"]))
+            r["image"] = image_url(found.get(r["id"]))
+    await images.resolver.fill(rows)  # ultima riserva: Scrydex
     return rows
 
 

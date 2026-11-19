@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from cardbot import images
 from cardbot.collections.importer import CollectionImporter, ImportFormatError, parse_export
 from cardbot.collections.service import (
     apply_plan, collection_totals, get_or_create_collection, record_value, refresh_items, upsert_item,
@@ -37,7 +38,7 @@ def item_json(i: CollectionItem) -> dict[str, Any]:
     return {
         "id": i.id, "collection_id": i.collection_id, "card_id": i.card_id, "catalog_lang": i.catalog_lang,
         "name": i.name, "set_id": i.set_id, "set_name": i.set_name, "number_label": i.number_label,
-        "image": i.image, "rarity": i.rarity, "variant": i.variant, "variant_label": i.variant_label,
+        "image": images.sized(i.image, "low") if images.is_scrydex(i.image) else i.image, "rarity": i.rarity, "variant": i.variant, "variant_label": i.variant_label,
         "lang": i.lang, "quantity": i.quantity, "unit_price": i.unit_price,
         "total": round(i.unit_price * i.quantity, 2) if i.unit_price is not None else None,
         "needs_review": i.needs_review, "added_at": i.added_at.isoformat() if i.added_at else None,

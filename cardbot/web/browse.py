@@ -12,6 +12,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from cardbot import images
 from cardbot.collections.service import refresh_items
 from cardbot.db import Collection, CollectionItem, User
 from cardbot.web.search import ZH, fill_missing_images, summary
@@ -58,7 +59,8 @@ def add_browse_routes(router: APIRouter, current_user: Callable, db: Callable, c
                 owned[i.set_id].add(i.card_id)
         out = []
         for s, d in zip(series, details):
-            sets = [{"id": x["id"], "name": x.get("name", x["id"]), "logo": _logo(x.get("logo")),
+            sets = [{"id": x["id"], "name": x.get("name", x["id"]),
+                     "logo": _logo(x.get("logo")) or images.logo_url(x["id"], cl),
                      "symbol": _logo(x.get("symbol")), "total": (x.get("cardCount") or {}).get("total"),
                      "official": (x.get("cardCount") or {}).get("official"), "owned": len(owned.get(x["id"], ()))}
                     for x in reversed((d or {}).get("sets") or [])]
@@ -85,7 +87,8 @@ def add_browse_routes(router: APIRouter, current_user: Callable, db: Callable, c
             card["owned"] = qty.get(card["id"], 0)
         count = detail.get("cardCount") or {}
         return {
-            "id": detail["id"], "catalog_lang": cl, "name": detail.get("name"), "logo": _logo(detail.get("logo")),
+            "id": detail["id"], "catalog_lang": cl, "name": detail.get("name"),
+            "logo": _logo(detail.get("logo")) or images.logo_url(detail["id"], cl),
             "symbol": _logo(detail.get("symbol")), "serie": (detail.get("serie") or {}).get("name"),
             "code": (detail.get("abbreviation") or {}).get("official") or detail["id"],
             "release_date": detail.get("releaseDate"), "total": count.get("total") or len(cards),

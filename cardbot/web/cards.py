@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import quote_plus
 
+from cardbot import images
 from cardbot.catalog.base import Catalog
 from cardbot.langs import NAMES_IT, flag
 from cardbot.prices.fx import FxRates
@@ -73,7 +74,9 @@ async def card_image(catalog: Catalog, lang: str, card: dict[str, Any]) -> str |
         return card["image"]
     fallback = "ja" if lang == ZH else ("en" if lang != "en" else None)
     other = await catalog.get_card(fallback, card["id"]) if fallback else None
-    return (other or {}).get("image")
+    if (other or {}).get("image"):
+        return other["image"]
+    return await images.resolver.card(card["id"], lang)  # riserva: Scrydex (verificata)
 
 
 async def card_detail(catalog: Catalog, prices: PriceService, lang: str, card_id: str) -> dict[str, Any] | None:

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { api, type CardSummary } from "../api";
 import { go } from "../nav";
-import { CardGrid, Header, Icon, Spinner } from "../ui";
+import { CardGrid, Header, Icon, SortBar, type SortOption, Spinner, sortBy } from "../ui";
 
 const FILTERS = [
   { id: "all", label: "Tutte" },
@@ -10,9 +10,17 @@ const FILTERS = [
   { id: "zh", label: "🇨🇳 Cinesi" },
 ];
 
+const SORTS: SortOption[] = [
+  { id: "release", label: "Uscita", desc: true },
+  { id: "name", label: "Nome" },
+  { id: "set", label: "Set e numero" },
+  { id: "owned", label: "Prima quelle che ho", desc: true },
+];
+
 // La ricerca resta quando torni indietro da una carta.
 let lastQuery = "";
 let lastLang = "all";
+const view = { mine: false, sort: "release", desc: true };
 
 /** Apre la scheda Cerca con un testo già scritto (es. dall'illustratore o dal set di una carta). */
 export function searchFor(q: string) {
@@ -24,6 +32,10 @@ export function searchFor(q: string) {
 export function SearchScreen() {
   const [q, setQ] = useState(lastQuery);
   const [lang, setLang] = useState(lastLang);
+  const [mine, setMine] = useState(view.mine);
+  const [sort, setSort] = useState(view.sort);
+  const [desc, setDesc] = useState(view.desc);
+  useEffect(() => { Object.assign(view, { mine, sort, desc }); }, [mine, sort, desc]);
   const [results, setResults] = useState<CardSummary[] | null>(null);
   const [recent, setRecent] = useState<CardSummary[]>([]);
   const [busy, setBusy] = useState(false);
@@ -68,6 +80,17 @@ export function SearchScreen() {
     return () => clearTimeout(timer);
   }, [q, lang]);
 
+  // Ordine del server = uscita (dal set più recente); gli altri ordinamenti si fanno qui.
+  const shown = useMemo(() => {
+    const rows = (results ?? []).filter((c) => !mine || (c.owned ?? 0) > 0);
+    if (sort === "release") return desc ? rows : [...rows].reverse();
+    const keys: Record<string, (c: CardSummary) => string | number> = {
+      name: (c) => c.name, set: (c) => `${c.set_name ?? ""} ${(c.number ?? "").padStart(4, "0")}`,
+      owned: (c) => c.owned ?? 0,
+    };
+    return sortBy(rows, keys[sort], desc);
+  }, [results, mine, sort, desc]);
+
   return (
     <>
       <Header title="Cerca" />
@@ -82,10 +105,18 @@ export function SearchScreen() {
         {FILTERS.map((f) => (
           <button class={`chip ${lang === f.id ? "on" : ""}`} onClick={() => setLang(f.id)}>{f.label}</button>
         ))}
+        <span class="chip-sep" />
+        <button class={`chip ${mine ? "on" : ""}`} onClick={() => setMine(!mine)}>✓ Che ho</button>
       </div>
 
       {busy && <Spinner />}
       {error && <p class="error pad">{error}</p>}
+      {results !== null && results.length > 0 && (
+        <SortBar options={SORTS} value={sort} desc={desc} onChange={(s, d) => { setSort(s); setDesc(d); }} />
+      )}
+      {!busy && results !== null && shown.length === 0 && mine && results.length > 0 && (
+        <p class="muted pad">Nessuna di queste carte è nella tua collezione.</p>
+      )}
       {!busy && results !== null && results.length === 0 && (
         <div class="empty small">
           <p>Nessuna carta trovata per «{q.trim()}».</p>
@@ -93,7 +124,7 @@ export function SearchScreen() {
             Per le carte cinesi scrivi il nome in cinese (es. <b>耿鬼</b>) o il codice del set giapponese.</p>
         </div>
       )}
-      {!busy && results && results.length > 0 && <CardGrid cards={results} />}
+      {!busy && shown.length > 0 && <CardGrid cards={shown} />}
 
       {results === null && !busy && (
         <>

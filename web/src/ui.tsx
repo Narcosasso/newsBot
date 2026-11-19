@@ -25,6 +25,7 @@ const PATHS: Record<string, ComponentChildren> = {
   link: (<><path d="M10 14l7-7M12.5 7H17v4.5" /><path d="M17 14v3.5A1.5 1.5 0 0 1 15.5 19h-9A1.5 1.5 0 0 1 5 17.5v-9A1.5 1.5 0 0 1 6.5 7H10" /></>),
   check: (<path d="M5 12.5l4.5 4.5L19 7.5" />),
   chevron: (<path d="M9.5 6l6 6-6 6" />),
+  sort: (<><path d="M7 5v14M4 16l3 3 3-3" /><path d="M17 19V5M14 8l3-3 3 3" /></>),
   gear: (<><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4L18 18M6 18l1.6-1.6M16.4 7.6L18 6" /></>),
   chart: (<><path d="M4 19.5h16" /><path d="M6 15l4-4.5 3.5 3L19 7" /><path d="M15.5 7H19v3.5" /></>),
   upload: (<><path d="M12 15V4M8 8l4-4 4 4" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>),
@@ -95,4 +96,59 @@ export function Header({ title, right }: { title: string; right?: ComponentChild
       {right && <div class="head-actions">{right}</div>}
     </header>
   );
+}
+
+export type SortOption = { id: string; label: string; desc?: boolean };
+
+/** "Ordina per" con verso crescente / decrescente: il menu nativo dell'iPhone, compatto. */
+export function SortBar({ options, value, desc, onChange }: {
+  options: SortOption[]; value: string; desc: boolean; onChange: (value: string, desc: boolean) => void;
+}) {
+  return (
+    <div class="sortbar">
+      <label class="sort-select">
+        <Icon name="sort" size={16} />
+        <span>Ordina per</span>
+        <select value={value} onChange={(e) => {
+          const id = (e.target as HTMLSelectElement).value;
+          onChange(id, options.find((o) => o.id === id)?.desc ?? false);
+        }}>
+          {options.map((o) => <option value={o.id}>{o.label}</option>)}
+        </select>
+        <b>{options.find((o) => o.id === value)?.label}</b>
+      </label>
+      <button class="sort-dir" onClick={() => onChange(value, !desc)} aria-label={desc ? "Decrescente" : "Crescente"}>
+        {desc ? "↓ decrescente" : "↑ crescente"}
+      </button>
+    </div>
+  );
+}
+
+/** Logo del set; se manca (o arriva il retro di una carta, verticale) mostra il simbolo o il codice. */
+export function SetLogo({ logo, symbol, code, class: cls = "" }: {
+  logo: string | null; symbol?: string | null; code: string; class?: string;
+}) {
+  const [step, setStep] = useState(0);
+  const srcs = [logo, symbol].filter(Boolean) as string[];
+  const src = srcs[step];
+  if (!src) return <span class={`set-code-badge ${cls}`}>{code.toUpperCase()}</span>;
+  return (
+    <img class={cls} src={src} alt="" loading="lazy" onError={() => setStep(step + 1)}
+      onLoad={(e) => {
+        const img = e.target as HTMLImageElement;
+        if (img.naturalHeight > img.naturalWidth * 1.2) setStep(step + 1);  // retro carta = immagine mancante
+      }} />
+  );
+}
+
+/** Ordina una copia della lista con la chiave scelta (testi in ordine alfabetico italiano). */
+export function sortBy<T>(rows: T[], key: (r: T) => string | number | null | undefined, desc: boolean): T[] {
+  const dir = desc ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const x = key(a), y = key(b);
+    if (x === y) return 0;
+    if (x === null || x === undefined) return 1;      // valori mancanti sempre in fondo
+    if (y === null || y === undefined) return -1;
+    return (typeof x === "string" ? x.localeCompare(String(y), "it", { numeric: true }) : x - (y as number)) * dir;
+  });
 }

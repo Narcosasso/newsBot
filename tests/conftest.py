@@ -70,3 +70,15 @@ def catalog() -> FakeCatalog:
         ("en", frozenset({"name": "Charizard ex"}.items())): "search_en_name_charizard_ex.json",
         ("en", frozenset({"name": "Gengar ex"}.items())): "search_en_name_gengar_ex.json",
     })
+
+
+@pytest.fixture(autouse=True)
+def no_external_images(monkeypatch, request):
+    """Nei test niente richieste a Scrydex: le foto di riserva risultano assenti."""
+    from cardbot import images
+
+    async def absent(base):
+        return False
+
+    if request.module.__name__ != "tests.test_images":
+        monkeypatch.setattr(images.resolver, "exists", absent)

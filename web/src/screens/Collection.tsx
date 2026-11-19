@@ -2,17 +2,22 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { api, type CollectionDetail, type CollectionItem, type CollectionSummary, type ImportReport } from "../api";
 import { CATALOG_BADGE, date, LANG_CHIPS, pct, plural, price, trendClass } from "../format";
 import { openCard } from "../nav";
-import { CardImage, Header, Icon, Spinner } from "../ui";
+import { CardImage, Header, Icon, SortBar, type SortOption, Spinner, sortBy } from "../ui";
 import { SettingsSheet } from "./Settings";
 import { TrackedList } from "./Tracked";
 import { PriceChart } from "../chart";
 
-const SORTS = [
-  { id: "value", label: "Valore" },
+const SORTS: SortOption[] = [
+  { id: "value", label: "Valore totale", desc: true },
+  { id: "unit", label: "Prezzo per carta", desc: true },
   { id: "name", label: "Nome" },
-  { id: "set", label: "Set" },
-  { id: "recent", label: "Recenti" },
+  { id: "set", label: "Set e numero" },
+  { id: "rarity", label: "Rarità" },
+  { id: "qty", label: "Quantità", desc: true },
+  { id: "recent", label: "Data di aggiunta", desc: true },
 ];
+// Ordinamento e filtri restano uguali tornando da una carta.
+const view = { sort: "value", desc: true, lang: "all", dupes: false };
 const FOLLOWED = -1; // "collezione" speciale: le carte seguite
 
 // Si ricorda la collezione aperta tornando da una carta.
@@ -105,10 +110,13 @@ export function CollectionScreen() {
 function CollectionView({ id, onChanged }: { id: number; onChanged: () => void }) {
   const [data, setData] = useState<CollectionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState("value");
-  const [lang, setLang] = useState("all");
+  const [sort, setSort] = useState(view.sort);
+  const [desc, setDesc] = useState(view.desc);
+  const [lang, setLang] = useState(view.lang);
+  const [dupes, setDupes] = useState(view.dupes);
   const [q, setQ] = useState("");
   const [onlyReview, setOnlyReview] = useState(false);
+  useEffect(() => { Object.assign(view, { sort, desc, lang, dupes }); }, [sort, desc, lang, dupes]);
 
   const load = () => api.collection(id).then(setData).catch((e) => setError((e as Error).message));
 
@@ -123,18 +131,17 @@ function CollectionView({ id, onChanged }: { id: number; onChanged: () => void }
   const items = useMemo(() => {
     if (!data) return [];
     const needle = q.trim().toLowerCase();
-    let rows = data.items.filter((i) => (lang === "all" || i.lang === lang) && (!onlyReview || i.needs_review)
-      && (!needle || `${i.name} ${i.set_name ?? ""} ${i.number_label ?? ""}`.toLowerCase().includes(needle)));
-    const by: Record<string, (a: CollectionItem, b: CollectionItem) => number> = {
-      value: (a, b) => (b.total ?? -1) - (a.total ?? -1),
-      name: (a, b) => a.name.localeCompare(b.name, "it"),
-      set: (a, b) => (a.set_name ?? "").localeCompare(b.set_name ?? "", "it")
-        || (parseInt(a.number_label ?? "0") - parseInt(b.number_label ?? "0")),
-      recent: (a, b) => (b.added_at ?? "").localeCompare(a.added_at ?? ""),
+    const rows = data.items.filter((i) => (lang === "all" || i.lang === lang) && (!onlyReview || i.needs_review)
+      && (!dupes || i.quantity > 1)
+      && (!needle || `${i.name} ${i.set_name ?? ""} ${i.number_label ?? ""} ${i.rarity ?? ""}`.toLowerCase().includes(needle)));
+    const num = (i: CollectionItem) => parseInt(i.number_label ?? "", 10) || 0;
+    const keys: Record<string, (i: CollectionItem) => string | number | null> = {
+      value: (i) => i.total, unit: (i) => i.unit_price, name: (i) => i.name,
+      set: (i) => `${i.set_name ?? ""} ${String(num(i)).padStart(4, "0")}`, rarity: (i) => i.rarity,
+      qty: (i) => i.quantity, recent: (i) => i.added_at,
     };
-    rows = [...rows].sort(by[sort]);
-    return rows;
-  }, [data, sort, lang, q, onlyReview]);
+    return sortBy(rows, keys[sort] ?? keys.value, desc);
+  }, [data, sort, desc, lang, q, onlyReview, dupes]);
 
   if (error) return <p class="error pad">{error}</p>;
   if (!data) return <Spinner />;
@@ -197,15 +204,19 @@ function CollectionView({ id, onChanged }: { id: number; onChanged: () => void }
         <input type="search" placeholder="Cerca nella collezione" value={q}
           onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
       </div>
+      <SortBar options={SORTS} value={sort} desc={desc} onChange={(s, d) => { setSort(s); setDesc(d); }} />
       <div class="chips">
-        {SORTS.map((s) => <button class={`chip ${sort === s.id ? "on" : ""}`} onClick={() => setSort(s.id)}>{s.label}</button>)}
+        <button class={`chip ${dupes ? "on" : ""}`} onClick={() => setDupes(!dupes)}>Doppioni</button>
         {langs.length > 1 && <span class="chip-sep" />}
         {langs.length > 1 && ["all", ...langs].map((l) => (
           <button class={`chip ${lang === l ? "on" : ""}`} onClick={() => setLang(l)}>
-            {l === "all" ? "Tutte" : `${LANG_CHIPS.find((x) => x.code === l)?.flag ?? ""} ${l.toUpperCase()}`}
+            {l === "all" ? "Tutte le lingue" : `${LANG_CHIPS.find((x) => x.code === l)?.flag ?? ""} ${l.toUpperCase()}`}
           </button>
         ))}
       </div>
+      {(q || dupes || lang !== "all" || onlyReview) && (
+        <p class="muted small pad">{items.length} {items.length === 1 ? "carta" : "carte"} · valore {price(items.reduce((s, i) => s + (i.total ?? 0), 0))}</p>
+      )}
 
       {items.length === 0 && <p class="muted pad">Nessuna carta con questi filtri.</p>}
       <div class="grid">

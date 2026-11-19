@@ -396,3 +396,16 @@ h3.sub { margin: 6px 0 0; font-size: 15px; }
 .cand-row { display: flex; gap: 10px; overflow-x: auto; padding: 4px 16px 8px; }
 .cand { flex: none; width: 110px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; text-align: left; }
 .mini.gold { background: var(--gold); color: var(--bg); }
+
+/* --- ordinamento e loghi ------------------------------------------------------------------------------- */
+.sortbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px 2px; }
+.sort-select { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+  border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 13.5px; }
+.sort-select span { white-space: nowrap; flex: none; }
+.sort-select b { flex: 1; min-width: 0; color: var(--text); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sort-select select { position: absolute; inset: 0; opacity: 0; font-size: 16px; }
+.sort-dir { flex: none; padding: 8px 12px; border-radius: 12px; background: var(--surface); font-size: 13.5px; font-weight: 700; color: var(--gold); }
+.set-code-badge { display: inline-grid; place-items: center; min-width: 56px; height: 32px; padding: 0 8px; border-radius: 9px;
+  background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: 0.4px; }
+.set-code-badge.set-hero-logo { height: 56px; min-width: 120px; font-size: 20px; }
+.list.top { margin-top: 10px; }

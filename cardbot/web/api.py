@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from cardbot import images
 from cardbot.alerts.tracking import CARDMARKET, PSA10, graded_specs, target_specs, upsert_tracking
 from cardbot.db import AppSession, RecentView, Tracking, User, get_or_create_user, utcnow
 from cardbot.langs import LANGS
@@ -161,7 +162,8 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
         detail["owned"] = owned_for(session, user, card_id, lang)
         if not detail["image"]:  # il catalogo non ha la foto: quella salvata in collezione (es. dal file importato)
             photo = next((o["image"] for o in detail["owned"] if o["image"]), None)
-            detail["image"] = detail["image_small"] = photo
+            detail["image_small"] = photo
+            detail["image"] = images.sized(photo, "high") if images.is_scrydex(photo) else photo
         return detail
 
     @router.get("/cards/{lang}/{card_id}/graded")

@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { api, type Pokedex } from "../api";
-import { Header, Icon, Spinner } from "../ui";
+import { Header, Icon, SortBar, type SortOption, Spinner, sortBy } from "../ui";
 import { searchFor } from "./Search";
 
 const GENS = ["Tutte", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
 const sprite = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`;
 let lastGen = 0;
 let lastOnly = "all";
+const SORTS: SortOption[] = [
+  { id: "number", label: "Numero" },
+  { id: "name", label: "Nome" },
+  { id: "owned", label: "Carte che ho", desc: true },
+];
+const view = { sort: "number", desc: false };
 
 export function PokedexScreen() {
   const [data, setData] = useState<Pokedex | null>(null);
@@ -14,6 +20,9 @@ export function PokedexScreen() {
   const [gen, setGen] = useState(lastGen);
   const [only, setOnly] = useState(lastOnly);
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState(view.sort);
+  const [desc, setDesc] = useState(view.desc);
+  useEffect(() => { Object.assign(view, { sort, desc }); }, [sort, desc]);
 
   const load = () => api.pokedex().then(setData).catch((e) => setError((e as Error).message));
   useEffect(() => { load(); }, []);
@@ -26,10 +35,14 @@ export function PokedexScreen() {
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase().replace(/^#0*/, "");
-    return (data?.pokemon ?? []).filter(([n, name, g, owned]) => (!gen || g === gen)
+    const rows = (data?.pokemon ?? []).filter(([n, name, g, owned]) => (!gen || g === gen)
       && (only === "all" || (only === "owned" ? owned > 0 : owned === 0))
       && (!needle || name.toLowerCase().includes(needle) || String(n) === needle));
-  }, [data, gen, only, q]);
+    const keys: Record<string, (p: [number, string, number, number]) => string | number> = {
+      number: (p) => p[0], name: (p) => p[1], owned: (p) => p[3],
+    };
+    return sortBy(rows, keys[sort] ?? keys.number, desc);
+  }, [data, gen, only, q, sort, desc]);
 
   return (
     <>
@@ -53,6 +66,7 @@ export function PokedexScreen() {
       <div class="chips">
         {GENS.map((g, i) => <button class={`chip ${gen === i ? "on" : ""}`} onClick={() => setGen(i)}>{i ? `Gen ${g}` : g}</button>)}
       </div>
+      <SortBar options={SORTS} value={sort} desc={desc} onChange={(s, d) => { setSort(s); setDesc(d); }} />
       {error && <p class="error pad">{error}</p>}
       {!data && !error && <Spinner />}
       <div class="dex-grid">

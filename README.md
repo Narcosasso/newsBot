@@ -162,6 +162,15 @@ Cosa fa oggi (fase 1):
   anche fuori dalla finestra di 24 ore di WhatsApp, senza il template `price_alert`;
 - **Storico prezzi**: nella scheda carta, sotto ogni prezzo, il grafico dei prezzi salvati ogni notte (carte in
   collezione e seguite; compare dal secondo giorno); in Collezione il grafico del valore totale;
+- **Ordina e filtra** ovunque: *Ordina per* (menu) con verso crescente / decrescente. In Collezione: valore totale,
+  prezzo per carta, nome, set e numero, rarità, quantità, data di aggiunta; filtri *Doppioni* e lingua, con il
+  valore delle carte filtrate. In Espansioni: uscita, nome, completamento, carte che hai; nel set ricerca per nome o
+  numero e ordine per numero, nome o prima quelle che hai. In Cerca il filtro *✓ Che ho*; nel Pokédex per numero,
+  nome o carte possedute;
+- **Foto e loghi mancanti**: TCGdex non ha le foto di alcune carte (promo, set nuovissimi, molte giapponesi e
+  cinesi) né i loghi di 60 set internazionali e di tutti i giapponesi. Per queste l'app usa le immagini pubbliche
+  di Scrydex (le stesse di MyDex), verificando che esistano davvero (per le mancanti Scrydex mostra il retro di una
+  carta, che viene scartato); se non c'è nulla compare il codice del set;
 - **Tengo o vendo?** (nella scheda carta, tasto *Analizza questa carta*): verdetto (Tieni / Neutrale / Valuta di
   vendere / Vendi / Valore basso), probabilità stimata che fra 30 giorni la carta valga meno di oggi, intervallo
   di prezzo probabile, e i motivi uno per uno.
