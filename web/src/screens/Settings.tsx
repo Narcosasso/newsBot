@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { api } from "../api";
 import { Icon } from "../ui";
+import { shareInvite } from "./Friends";
 
 const isStandalone = () =>
   window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
@@ -20,6 +21,15 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<"checking" | "off" | "on" | "unsupported" | "needs-home" | "denied">("checking");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [nameMsg, setNameMsg] = useState<string | null>(null);
+  useEffect(() => { api.me().then((m) => setName(m.name)).catch(() => {}); }, []);
+  const saveName = async () => {
+    try { setNameMsg(`Ora ti chiami ${(await api.rename(name.trim())).name}.`); } catch (e) { setNameMsg((e as Error).message); }
+  };
+  const invite = async () => {
+    try { setNameMsg(await shareInvite()); } catch (e) { setNameMsg((e as Error).message); }
+  };
 
   const check = async () => {
     if (isIOS() && !isStandalone()) return setState("needs-home");
@@ -116,6 +126,15 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </div>
         )}
         {msg && <p class="small">{msg}</p>}
+
+        <h3>Il tuo nome</h3>
+        <p class="muted small">È il nome che vedono i tuoi amici.</p>
+        <div class="row gap">
+          <input class="input" value={name} maxLength={30} onInput={(e) => setName((e.target as HTMLInputElement).value)} />
+          <button class="btn ghost" onClick={saveName} disabled={name.trim().length < 2}>Salva</button>
+        </div>
+        <button class="btn ghost" onClick={invite}><Icon name="users" size={18} /> Invita un amico</button>
+        {nameMsg && <p class="small">{nameMsg}</p>}
 
         <h3>Account</h3>
         <button class="btn ghost" onClick={logout}><Icon name="logout" size={18} /> Esci da PokeVault</button>

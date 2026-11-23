@@ -121,13 +121,16 @@ export type CollectionItem = {
   total: number | null;
   needs_review: boolean;
   added_at: string | null;
+  target_price?: number | null;
 };
 
 export type OwnedItem = CollectionItem & { collection_name: string; kind?: string };
 
 export type CollectionTotals = { value: number; cards: number; unique: number; unpriced: number };
-export type CollectionSummary = CollectionTotals & { id: number; name: string };
+export type CollectionSummary = CollectionTotals & { id: number; name: string; kind?: string; visibility?: string;
+  show_values?: boolean };
 export type CollectionDetail = CollectionSummary & {
+  kind: string; visibility: string; show_values: boolean;
   history: { day: string; value: number; cards: number }[];
   items: CollectionItem[];
   pending_prices: number;
@@ -193,6 +196,20 @@ export type Analysis = {
   disclaimer: string;
 };
 
+export type FriendCollection = { id: number; name: string; kind: string; cards: number; unique: number; value?: number };
+export type Friend = { id: number; name: string; cards: number; unique: number; collections: FriendCollection[];
+  they_have: number; you_have: number };
+export type FriendItem = CollectionItem & { i_have?: boolean; i_want?: boolean };
+export type TradeCard = { id: number; card_id: string; catalog_lang: string; name: string; set_name: string | null;
+  number_label: string | null; image: string | null; variant: string; lang: string; quantity: number;
+  unit_price: number | null; total: number | null };
+export type Trade = {
+  id: number; status: "proposed" | "accepted" | "rejected" | "cancelled" | "countered" | "completed" | "undone";
+  role: "proposer" | "recipient"; other: { id: number; name: string }; message: string | null; parent_id: number | null;
+  give: TradeCard[]; take: TradeCard[]; give_value: number; take_value: number; i_confirmed: boolean;
+  they_confirmed: boolean; created_at: string; updated_at: string; can_undo: boolean; needs_me?: boolean;
+};
+
 export type ScanResult = {
   found: boolean;
   usage?: { used: number; limit: number } | null;
@@ -223,7 +240,28 @@ const json = (body: unknown): RequestInit => ({
 });
 
 export const api = {
-  me: () => req<{ app: string; photos: boolean; graded: boolean }>("/api/me"),
+  me: () => req<{ app: string; user_id: number; name: string; owner: boolean; photos: boolean; graded: boolean }>("/api/me"),
+  rename: (name: string) => req<{ name: string }>("/api/me", { method: "PATCH", ...json({ name }) }),
+  createInvite: () => req<{ code: string; path: string; expires_at: string }>("/api/invites", { method: "POST" }),
+  inviteInfo: (code: string) => req<{ inviter: string }>(`/api/invites/${encodeURIComponent(code)}`),
+  acceptInvite: (code: string, name: string, pin: string) =>
+    req<{ ok: boolean; name: string }>(`/api/invites/${encodeURIComponent(code)}/accept`, { method: "POST", ...json({ name, pin }) }),
+  friends: () => req<{ friends: Friend[] }>("/api/friends"),
+  removeFriend: (id: number) => req<{ ok: boolean }>(`/api/friends/${id}`, { method: "DELETE" }),
+  friendCollection: (fid: number, cid: number) =>
+    req<{ id: number; name: string; kind: string; friend: string; show_values: boolean; value?: number; cards: number;
+      unique: number; items: FriendItem[] }>(`/api/friends/${fid}/collections/${cid}`),
+  matches: (fid: number) => req<{ friend: string; they_have: CollectionItem[]; you_have: CollectionItem[] }>(`/api/friends/${fid}/matches`),
+  tradeable: (fid: number) => req<{ theirs: CollectionItem[]; mine: CollectionItem[] }>(`/api/friends/${fid}/tradeable`),
+  privacy: (cid: number, body: { visibility?: string; show_values?: boolean }) =>
+    req<{ visibility: string; show_values: boolean }>(`/api/collections/${cid}/privacy`, { method: "PATCH", ...json(body) }),
+  trades: () => req<{ trades: Trade[]; pending: number }>("/api/trades"),
+  propose: (body: { friend_id: number; give: { item_id: number; quantity: number }[];
+    take: { item_id: number; quantity: number }[]; message?: string; parent_id?: number }) =>
+    req<{ trade: Trade }>("/api/trades", { method: "POST", ...json(body) }),
+  tradeAction: (id: number, action: string) => req<{ trade: Trade }>(`/api/trades/${id}/${action}`, { method: "POST" }),
+  setTarget: (itemId: number, target: number | null) =>
+    req<{ item: CollectionItem }>(`/api/collection-items/${itemId}/target`, { method: "PATCH", ...json({ target_price: target }) }),
   login: (pin: string) => req<{ ok: boolean }>("/api/login", { method: "POST", ...json({ pin }) }),
   logout: () => req<{ ok: boolean }>("/api/logout", { method: "POST" }),
   search: (q: string, lang: string) =>
@@ -269,7 +307,7 @@ export const api = {
       method: "POST", headers: { "Content-Type": "application/json" }, body: fileText,
     }),
   setItem: (body: { collection_id?: number; card_id: string; catalog_lang: string; variant: string; lang: string;
-    quantity: number }) =>
+    quantity: number; wishlist?: boolean }) =>
     req<{ item: CollectionItem | null; owned: OwnedItem[] }>("/api/collection-items", { method: "PUT", ...json(body) }),
   confirmItem: (id: number) => req<{ ok: boolean }>(`/api/collection-items/${id}/confirm`, { method: "POST" }),
   deleteItem: (id: number) => req<{ ok: boolean }>(`/api/collection-items/${id}`, { method: "DELETE" }),

@@ -87,7 +87,7 @@ export function CollectionScreen() {
       {list && (list.length > 0 || selected === FOLLOWED) && (
         <div class="chips">
           {list.map((c) => (
-            <button class={`chip ${selected === c.id ? "on" : ""}`} onClick={() => setSelected(c.id)}>{c.name}</button>
+            <button class={`chip ${selected === c.id ? "on" : ""}`} onClick={() => setSelected(c.id)}>{c.kind === "wishlist" ? "❤ " : ""}{c.name}</button>
           ))}
           <button class={`chip ${selected === FOLLOWED ? "on" : ""}`} onClick={() => setSelected(FOLLOWED)}>🔔 Seguite</button>
         </div>
@@ -184,6 +184,20 @@ function CollectionView({ id, onChanged }: { id: number; onChanged: () => void }
         {data.pending_prices > 0 && <p class="value-note"><span class="dot" /> Aggiorno i prezzi di {plural(data.pending_prices, "carta", "carte")}…</p>}
         {data.unpriced > 0 && !data.pending_prices && (
           <p class="value-note">{plural(data.unpriced, "carta", "carte")} senza prezzo su Cardmarket: non conteggiate.</p>
+        )}
+        {data.kind !== "wishlist" && (
+          <div class="privacy-row">
+            <button class={`mini ${data.visibility === "friends" ? "gold" : ""}`} onClick={async () => {
+              const r = await api.privacy(id, { visibility: data.visibility === "friends" ? "private" : "friends" });
+              setData({ ...data, ...r });
+            }}>{data.visibility === "friends" ? "👥 Visibile agli amici" : "🔒 Privata"}</button>
+            {data.visibility === "friends" && (
+              <button class="mini" onClick={async () => {
+                const r = await api.privacy(id, { show_values: !data.show_values });
+                setData({ ...data, ...r });
+              }}>{data.show_values ? "€ Valori visibili" : "€ Valori nascosti"}</button>
+            )}
+          </div>
         )}
         <div class="value-actions">
           <button class="mini" onClick={refresh}><Icon name="refresh" size={16} /> Aggiorna prezzi</button>

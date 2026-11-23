@@ -119,6 +119,11 @@ export function CardDetailScreen({ lang, id, onClose }: { lang: string; id: stri
               if (msg) flash(msg);
             }} />
 
+            <WishPanel detail={detail} variant={variant?.variant ?? "holo"} onChanged={(owned, msg) => {
+              setDetail({ ...detail, owned });
+              if (msg) flash(msg);
+            }} />
+
             <FollowPanel detail={detail} variant={variant?.variant ?? "holo"}
               psaAvailable={!!graded?.grades?.some((g) => g.company === "PSA" && g.grade === "10")}
               onSaved={(msg, tracking) => {
@@ -404,7 +409,7 @@ function OwnedPanel({ detail, onChanged }: {
   const [colId, setColId] = useState<number | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const owned = detail.owned ?? [];
+  const owned = (detail.owned ?? []).filter((o) => o.kind !== "wishlist");
   const label = (v: string) => detail.variants.find((x) => x.variant === v)?.label ?? v;
 
   useEffect(() => {
@@ -648,5 +653,54 @@ function Line({ points, tall = false }: { points: number[]; tall?: boolean }) {
     <svg class={`spark ${tall ? "tall" : ""}`} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
       <path d={d} fill="none" stroke={up ? "var(--up)" : "var(--down)"} stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
     </svg>
+  );
+}
+
+/** Lista desideri: cuore, e avviso quando il prezzo scende sotto una cifra. Gli amici vedono cosa cerchi. */
+function WishPanel({ detail, variant, onChanged }: {
+  detail: CardDetail; variant: string; onChanged: (owned: OwnedItem[], msg?: string) => void;
+}) {
+  const wish = (detail.owned ?? []).find((o) => o.kind === "wishlist");
+  const [target, setTarget] = useState(wish?.target_price ? String(wish.target_price).replace(".", ",") : "");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setTarget(wish?.target_price ? String(wish.target_price).replace(".", ",") : ""); }, [wish?.id]);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const r = await api.setItem({ card_id: detail.id, catalog_lang: detail.catalog_lang, variant, lang: "any",
+        quantity: wish ? 0 : 1, wishlist: true });
+      onChanged(r.owned, wish ? "Tolta dalla lista desideri" : "❤ Nella lista desideri");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveTarget = async () => {
+    if (!wish) return;
+    const value = target.trim() ? Number(target.replace(",", ".")) : null;
+    if (value !== null && (Number.isNaN(value) || value < 0)) return;
+    await api.setTarget(wish.id, value);
+    onChanged((detail.owned ?? []).map((o) => (o.id === wish.id ? { ...o, target_price: value } : o)),
+      value ? `Ti avviso sotto ${price(value)}` : "Avviso di prezzo tolto");
+  };
+
+  return (
+    <section class="panel">
+      <h2><Icon name="heart" size={20} /> Lista desideri</h2>
+      {!wish && <p class="muted">Aggiungila se la cerchi: i tuoi amici vedranno che la vuoi e potranno proportela in uno scambio.</p>}
+      <button class={`btn ${wish ? "ghost" : "primary"}`} onClick={toggle} disabled={busy}>
+        {wish ? "❤ Nella lista desideri · togli" : "❤ Aggiungi alla lista desideri"}
+      </button>
+      {wish && (
+        <>
+          <p class="muted small">Avvisami quando il prezzo di mercato scende sotto:</p>
+          <div class="row gap">
+            <input class="input" inputMode="decimal" placeholder="es. 40" value={target}
+              onInput={(e) => setTarget((e.target as HTMLInputElement).value)} />
+            <button class="btn ghost" onClick={saveTarget}>Salva</button>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

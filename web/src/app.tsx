@@ -6,16 +6,19 @@ import { ScanScreen } from "./screens/Scan";
 import { SearchScreen } from "./screens/Search";
 import { PokedexScreen } from "./screens/Pokedex";
 import { SetsScreen } from "./screens/Sets";
+import { FriendsScreen } from "./screens/Friends";
+import { InviteScreen } from "./screens/Invite";
 import { CollectionScreen } from "./screens/Collection";
 import { go } from "./nav";
 import { Icon } from "./ui";
 
-export type Tab = "dex" | "sets" | "collection" | "scan" | "search";
+export type Tab = "dex" | "sets" | "collection" | "friends" | "scan" | "search";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "dex", label: "Pokédex", icon: "dex" },
   { id: "sets", label: "Espansioni", icon: "grid" },
   { id: "collection", label: "Collezione", icon: "folder" },
+  { id: "friends", label: "Amici", icon: "users" },
   { id: "scan", label: "Scansiona", icon: "scan" },
   { id: "search", label: "Cerca", icon: "search" },
 ];
@@ -37,6 +40,15 @@ export function App() {
   const [state, setState] = useState<"loading" | "login" | "ready">("loading");
   const [lastTab, setLastTab] = useState<Tab>("search");
   const [lastPath, setLastPath] = useState("search");  // chiudendo una carta si torna esattamente qui
+  const [pending, setPending] = useState(0);           // scambi che aspettano una tua risposta
+  useEffect(() => {
+    if (state !== "ready") return;
+    const poll = () => api.trades().then((r) => setPending(r.pending)).catch(() => {});
+    poll();
+    const t = setInterval(poll, 60000);
+    window.addEventListener("hashchange", poll);
+    return () => { clearInterval(t); window.removeEventListener("hashchange", poll); };
+  }, [state]);
 
   const check = () =>
     api
@@ -65,6 +77,7 @@ export function App() {
   }, [route.join("/"), isCard]);
 
   if (state === "loading") return <div class="splash"><Icon name="vault" size={64} /></div>;
+  if (head === "invite" && route[1]) return <InviteScreen code={route[1]} onDone={() => setState("ready")} />;
   if (state === "login") return <LoginScreen onDone={() => setState("ready")} />;
 
   return (
@@ -75,13 +88,15 @@ export function App() {
         {tab === "collection" && <CollectionScreen />}
         {tab === "sets" && <SetsScreen route={head === "sets" ? route : ["sets"]} />}
         {tab === "dex" && <PokedexScreen />}
+        {tab === "friends" && <FriendsScreen route={head === "friends" ? route : ["friends"]} />}
       </main>
       {isCard && <CardDetailScreen lang={route[1]} id={route.slice(2).join("/")} onClose={() => go(lastPath)} />}
       <nav class="tabbar" hidden={isCard}>
         {TABS.map((t) => (
           <button class={`tab ${t.id === tab ? "active" : ""}`} onClick={() => go(t.id)} aria-label={t.label}>
-            <Icon name={t.icon} size={24} />
+            <Icon name={t.icon} size={22} />
             <span>{t.label}</span>
+            {t.id === "friends" && pending > 0 && <span class="tab-badge">{pending}</span>}
           </button>
         ))}
       </nav>

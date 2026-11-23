@@ -21,7 +21,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
 body { min-height: 100dvh; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
-button, input { font: inherit; color: inherit; }
+button, input, textarea, select { font: inherit; color: inherit; }
 button { background: none; border: 0; padding: 0; cursor: pointer; }
 button:disabled { opacity: 0.5; }
 img { display: block; }
@@ -55,9 +55,10 @@ h1, h2, p { margin: 0; }
 
 /* --- barra delle schede ------------------------------------------------------------------------------ */
 .tabbar {
+  --tabs: 6;
   position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 8px);
   max-width: 560px; margin: 0 auto; height: var(--tabbar-h);
-  display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
+  display: grid; grid-template-columns: repeat(6, 1fr); align-items: center;
   padding: 6px; border-radius: 30px; z-index: 20;
   background: rgba(30, 34, 44, 0.78); border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
@@ -65,7 +66,8 @@ h1, h2, p { margin: 0; }
 }
 .tab {
   height: 100%; border-radius: 24px; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px; color: var(--muted); font-size: 11px; font-weight: 600;
+  justify-content: center; gap: 3px; color: var(--muted); font-size: 10px; font-weight: 600; position: relative;
+  letter-spacing: -0.1px; white-space: nowrap;
 }
 .tab.active { color: var(--gold); background: rgba(255, 255, 255, 0.06); }
 
@@ -409,3 +411,32 @@ h3.sub { margin: 6px 0 0; font-size: 15px; }
   background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: 0.4px; }
 .set-code-badge.set-hero-logo { height: 56px; min-width: 120px; font-size: 20px; }
 .list.top { margin-top: 10px; }
+
+/* --- amici e scambi ---------------------------------------------------------------------------------------- */
+.tab-badge { position: absolute; top: 4px; right: 8px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--down); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+.avatar { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 800;
+  font-size: 18px; color: var(--bg); background: linear-gradient(135deg, var(--gold), #ff9a5a); }
+.avatar.big { width: 40px; height: 40px; margin-right: 10px; }
+.friend-title { display: flex; align-items: center; font-size: 24px; font-weight: 800; }
+.list-row.needs-me { outline: 1px solid rgba(244, 183, 64, 0.6); background: linear-gradient(90deg, var(--gold-soft), var(--surface)); }
+.trade-thumbs { display: flex; flex: none; }
+.trade-thumbs .card-img.thumb { width: 34px; margin-right: -14px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); }
+.trade-thumbs + .list-main { margin-left: 16px; }
+.trade-bar-top { margin: 10px 0 4px; }
+.tile.picked .card-img { outline: 3px solid var(--gold); outline-offset: 2px; }
+.pick-check { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%;
+  background: var(--gold); color: var(--bg); display: grid; place-items: center; font-weight: 900; font-size: 20px; }
+.flag-want { position: absolute; left: 4px; bottom: 4px; padding: 1px 6px; border-radius: 9px; font-size: 12px; background: rgba(13, 15, 20, 0.85); }
+.pick-bar { position: fixed; left: 16px; right: 16px; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 18px); z-index: 25;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 16px; border-radius: 18px;
+  background: var(--surface-2); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-weight: 700; max-width: 560px; margin: 0 auto; }
+.balance { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-weight: 800; }
+.input.area { min-height: 70px; padding: 10px 14px; resize: vertical; }
+.input.wide { width: 100%; }
+.pick-list { display: flex; flex-direction: column; gap: 6px; max-height: 50dvh; overflow-y: auto; }
+.owned-row.picked { outline: 2px solid var(--gold); }
+.pick-dot { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); font-weight: 800; color: var(--gold); }
+.quote { font-style: italic; color: var(--text); padding: 8px 12px; border-left: 3px solid var(--gold); background: var(--surface-2); border-radius: 0 10px 10px 0; }
+.privacy-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+button.owned-row { width: 100%; text-align: left; }

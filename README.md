@@ -171,6 +171,20 @@ Cosa fa oggi (fase 1):
   cinesi) né i loghi di 60 set internazionali e di tutti i giapponesi. Per queste l'app usa le immagini pubbliche
   di Scrydex (le stesse di MyDex), verificando che esistano davvero (per le mancanti Scrydex mostra il retro di una
   carta, che viene scartato); se non c'è nulla compare il codice del set;
+- **Amici e scambi** (scheda *Amici*):
+  - *Invita un amico* (➕ in Amici o in Impostazioni) crea un link valido 7 giorni per una persona: chi lo apre
+    sceglie nome e PIN (6-12 cifre, diverso da quello degli altri) e ha subito il suo account, già vostro amico.
+    Poi aggiunge l'app alla Home e importa la sua collezione (MyDex) o scansiona le carte;
+  - ognuno vede le collezioni visibili degli amici; per ogni tua collezione scegli *Visibile agli amici* o
+    *Privata* e se mostrare i valori in euro (all'inizio nascosti);
+  - *Lista desideri* (❤ nella scheda carta), con avviso push quando il prezzo scende sotto la tua cifra;
+  - *Scambi possibili*: le carte dell'amico che cerchi e le tue (prima i doppioni) che cerca lui;
+  - *Proponi uno scambio*: scegli le carte, l'app mostra il valore Cardmarket dei due lati; l'amico accetta,
+    rifiuta o fa una controproposta; quando entrambi confermate di aver ricevuto le carte, passano da sole nelle
+    vostre collezioni (e spariscono dalla lista desideri). *Annulla* entro 14 giorni riporta tutto com'era.
+    Ogni passaggio arriva come notifica push. L'app non gestisce soldi né spedizioni;
+  - gli amici non usano il bot WhatsApp (solo notifiche dell'app), hanno 150 letture di foto al mese a testa
+    (`VISION_FRIEND_LIMIT`) e niente avvisi PSA 10 (i crediti gratuiti sono condivisi);
 - **Tengo o vendo?** (nella scheda carta, tasto *Analizza questa carta*): verdetto (Tieni / Neutrale / Valuta di
   vendere / Vendi / Valore basso), probabilità stimata che fra 30 giorni la carta valga meno di oggi, intervallo
   di prezzo probabile, e i motivi uno per uno.
