@@ -213,19 +213,20 @@ async def send_pending(sessions: sessionmaker[Session], sender: Sender | None, t
                     pushed = await push.send_to_user(user_id, push_title(lines), push_body(lines))
                 except Exception as exc:
                     log.error("Notifica push fallita per l'utente %s: %s", user_id, exc)
-            if sender is not None:
+            whatsapp = sender if not user.wa_id.startswith("app:") else None  # amici dell'app: solo push
+            if whatsapp is not None:
                 in_window = user.last_inbound_at is not None and _aware(user.last_inbound_at) > now - SERVICE_WINDOW
                 try:
                     if in_window:
-                        wamid = await sender.send_text(user.wa_id, digest_text(lines))
+                        wamid = await whatsapp.send_text(user.wa_id, digest_text(lines))
                     else:
-                        wamid = await sender.send_template(user.wa_id, template, template_lang,
+                        wamid = await whatsapp.send_template(user.wa_id, template, template_lang,
                                                            template_params(lines))
                         report.used_template += 1
                 except Exception as exc:  # errore esplicito: il messaggio non è partito
                     log.error("Invio WhatsApp fallito per l'utente %s: %s", user_id, exc)
                     error = exc
-            delivered = pushed > 0 or (sender is not None and error is None)
+            delivered = pushed > 0 or (whatsapp is not None and error is None)
             if delivered:
                 for n in notes:
                     n.status, n.wamid, n.sent_at = "sent", wamid or ("push" if pushed else None), now

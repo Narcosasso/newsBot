@@ -16,12 +16,15 @@ from sqlalchemy.orm import Session
 
 from cardbot import images
 from cardbot.alerts.tracking import CARDMARKET, PSA10, graded_specs, target_specs, upsert_tracking
+from cardbot.accounts import PIN_RE, display_name, is_owner, owner_wa_id, user_by_pin
 from cardbot.db import AppSession, RecentView, Tracking, User, get_or_create_user, utcnow
 from cardbot.langs import LANGS
+from cardbot.recognition.quota import bump_user, user_usage
 from cardbot.recognition.vision import VisionError
 from cardbot.web.cards import card_detail, card_image, card_label, graded_detail
 from cardbot.web.analysis import _history, card_analysis
 from cardbot.web.browse import add_browse_routes, owned_by_card
+from cardbot.web.friends_api import add_friend_routes
 from cardbot.web.push_api import add_push_routes
 from cardbot.web.collections_api import add_collection_routes, owned_for
 from cardbot.web.search import image_url, search, summary
@@ -82,9 +85,16 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
             yield session
 
     def app_user(session: Session, c) -> User:
-        wa_id = c.settings.app_wa_id or next(iter(sorted(c.settings.allowed_wa_id_set)), "app")
-        user, _ = get_or_create_user(session, wa_id)
+        user, _ = get_or_create_user(session, owner_wa_id(c.settings))
         return user
+
+    def start_session(session: Session, user: User, request: Request, response: Response) -> None:
+        token = secrets.token_urlsafe(32)
+        session.add(AppSession(token_hash=_hash(token), user_id=user.id,
+                               user_agent=(request.headers.get("user-agent") or "")[:300]))
+        session.commit()
+        response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True, samesite="strict",
+                            secure=request.url.scheme == "https", path="/")
 
     def current_user(request: Request, session: Session = Depends(db)) -> User:
         token = request.cookies.get(COOKIE)
@@ -105,16 +115,15 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
         if not pin:
             raise HTTPException(503, "App non configurata: manca APP_PIN.")
         guard.check()
-        if not hmac.compare_digest(body.pin.strip().encode(), pin.encode()):
+        entered = body.pin.strip()
+        if hmac.compare_digest(entered.encode(), pin.encode()):
+            user = app_user(session, c)          # proprietario
+        else:
+            user = user_by_pin(session, entered) if PIN_RE.match(entered) else None  # amico invitato
+        if user is None:
             guard.fail()
             raise HTTPException(401, "PIN errato")
-        user = app_user(session, c)
-        token = secrets.token_urlsafe(32)
-        session.add(AppSession(token_hash=_hash(token), user_id=user.id,
-                               user_agent=(request.headers.get("user-agent") or "")[:300]))
-        session.commit()
-        response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True, samesite="strict",
-                            secure=request.url.scheme == "https", path="/")
+        start_session(session, user, request, response)
         return {"ok": True}
 
     @router.post("/logout")
@@ -128,7 +137,8 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
 
     @router.get("/me")
     def me(user: User = Depends(current_user), c=Depends(container)) -> dict[str, Any]:
-        return {"app": "PokeVault", "photos": getattr(c.reader, "enabled", False),
+        return {"app": "PokeVault", "user_id": user.id, "name": display_name(user, c.settings),
+                "owner": is_owner(user, c.settings), "photos": getattr(c.reader, "enabled", False),
                 "graded": c.prices.graded_enabled, "langs": [{"code": k, "short": v[0], "flag": v[1]}
                                                               for k, v in LANGS.items()]}
 
@@ -189,6 +199,13 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
         image = await request.body()
         if not image or len(image) > MAX_IMAGE_BYTES:
             raise HTTPException(413, "Foto mancante o troppo grande")
+        if not is_owner(user, c.settings):  # amici: un tetto a testa, le letture gratuite sono condivise
+            with c.sessions() as s:
+                if user_usage(s, user.id) >= c.settings.vision_friend_limit:
+                    return {"found": False, "candidates": [], "usage": _usage(c),
+                            "message": f"Hai usato le tue {c.settings.vision_friend_limit} letture di foto di questo "
+                                       "mese: scrivi codice e numero della carta, oppure riprova il mese prossimo."}
+                bump_user(s, user.id)
         try:
             read = await c.reader.read_card(image, request.headers.get("content-type", "image/jpeg"))
         except VisionError as exc:
@@ -233,6 +250,8 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
     async def put_tracking(body: TrackBody, user: User = Depends(current_user), session: Session = Depends(db),
                            c=Depends(container)) -> dict[str, Any]:
         langs = [x for x in body.langs if x in LANGS] or ["it"]
+        if body.psa and not is_owner(user, c.settings):  # i crediti PSA 10 sono condivisi: avvisi solo al proprietario
+            body.psa = False
         quotes = await c.prices.quotes(body.card_id, body.catalog_lang, body.variant, langs, with_graded=body.psa)
         card = await c.catalog.get_card(body.catalog_lang, body.card_id)
         if card is None:
@@ -259,6 +278,7 @@ def build_api(get_container: Callable[[], Any]) -> APIRouter:
     add_collection_routes(router, current_user, db, container)
     add_browse_routes(router, current_user, db, container)
     add_push_routes(router, current_user, db, container)
+    add_friend_routes(router, current_user, db, container, start_session, guard)
     return router
 
 

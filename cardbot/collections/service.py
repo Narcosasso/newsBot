@@ -272,3 +272,24 @@ def update_from_price_guide(session: Session, entries: dict[int, dict[str, Any]]
     for (cid,) in session.query(Collection.id).all():
         record_value(session, cid, day)
     return {"items_priced": priced, "history_rows": saved}
+
+
+def _eur(x: float) -> str:
+    return f"{x:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def wishlist_alerts(session: Session) -> list[tuple[int, str]]:
+    """Carte della lista desideri scese sotto il prezzo obiettivo: un avviso, poi silenzio finché non risale."""
+    rows = (session.query(CollectionItem).join(Collection)
+            .filter(Collection.kind == "wishlist", CollectionItem.target_price.isnot(None),
+                    CollectionItem.unit_price.isnot(None)).all())
+    out: list[tuple[int, str]] = []
+    for i in rows:
+        if i.unit_price <= i.target_price and i.target_notified_at is None:
+            i.target_notified_at = utcnow()
+            where = " ".join(x for x in (i.set_name, i.number_label) if x)
+            out.append((i.collection.user_id, f"{i.name} ({where}) è a {_eur(i.unit_price)}: sotto i tuoi "
+                                              f"{_eur(i.target_price)}"))
+        elif i.target_notified_at is not None and i.unit_price > i.target_price * 1.05:
+            i.target_notified_at = None  # risalita: il prossimo calo verrà segnalato di nuovo
+    return out

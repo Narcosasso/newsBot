@@ -54,3 +54,20 @@ class QuotaReader:
             session.merge(row)
             session.commit()
         return await self._inner.read_card(image, media_type)
+
+
+def user_key(user_id: int) -> str:
+    return f"{_key()}:u{user_id}"
+
+
+def user_usage(session: Session, user_id: int) -> int:
+    row = session.get(JobState, user_key(user_id))
+    return int((row.value or {}).get("count", 0)) if row else 0
+
+
+def bump_user(session: Session, user_id: int) -> None:
+    key = user_key(user_id)
+    row = session.get(JobState, key) or JobState(key=key, value={"count": 0})
+    row.value = {"count": int((row.value or {}).get("count", 0)) + 1}
+    session.merge(row)
+    session.commit()

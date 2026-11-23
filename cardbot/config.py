@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     vapid_subject: str = "mailto:pokevault@example.com"
     # Tetto mensile alle letture delle foto con Google Vision (gratis fino a 1.000): oltre, niente costi a sorpresa.
     vision_monthly_limit: int = 950
+    vision_friend_limit: int = 150  # letture al mese per ogni amico invitato (il totale resta vision_monthly_limit)
 
     # --- Bot ---
     default_langs: str = "ita,eng"

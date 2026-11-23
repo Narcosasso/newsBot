@@ -14,6 +14,7 @@ from cardbot.collections.importer import CollectionImporter, ImportFormatError, 
 from cardbot.collections.service import (
     apply_plan, collection_totals, get_or_create_collection, record_value, refresh_items, upsert_item,
 )
+from cardbot.accounts import wishlist_of
 from cardbot.db import Collection, CollectionItem, CollectionValue, User
 from cardbot.langs import LANGS
 
@@ -32,6 +33,11 @@ class ItemBody(BaseModel):
     variant: str = Field(max_length=16)
     lang: str = Field(max_length=8)
     quantity: int = Field(ge=0, le=999)
+    wishlist: bool = False   # True: nella lista desideri (lang "any" = qualsiasi lingua)
+
+
+class TargetBody(BaseModel):
+    target_price: float | None = Field(default=None, ge=0, le=100000)
 
 
 def item_json(i: CollectionItem) -> dict[str, Any]:
@@ -63,7 +69,8 @@ def add_collection_routes(router: APIRouter, current_user: Callable, db: Callabl
     def list_collections(user: User = Depends(current_user), session: Session = Depends(db)) -> dict[str, Any]:
         out = []
         for col in session.query(Collection).filter_by(user_id=user.id).order_by(Collection.id).all():
-            out.append({"id": col.id, "name": col.name, "kind": col.kind, **collection_totals(col.items)})
+            out.append({"id": col.id, "name": col.name, "kind": col.kind, "visibility": col.visibility,
+                        "show_values": col.show_values, **collection_totals(col.items)})
         return {"collections": out}
 
     @router.post("/collections")
@@ -97,7 +104,8 @@ def add_collection_routes(router: APIRouter, current_user: Callable, db: Callabl
         history = (session.query(CollectionValue).filter_by(collection_id=col.id)
                    .order_by(CollectionValue.day).all())
         items = sorted(col.items, key=lambda i: -(i.unit_price or 0) * i.quantity)
-        return {"id": col.id, "name": col.name, "kind": col.kind, **collection_totals(col.items),
+        return {"id": col.id, "name": col.name, "kind": col.kind, "visibility": col.visibility,
+                "show_values": col.show_values, **collection_totals(col.items),
                 "history": [{"day": h.day.isoformat(), "value": h.value, "cards": h.cards} for h in history],
                 "items": [item_json(i) for i in items],
                 "pending_prices": sum(1 for i in col.items if i.price_updated_at is None)}
@@ -134,9 +142,12 @@ def add_collection_routes(router: APIRouter, current_user: Callable, db: Callabl
     @router.put("/collection-items")
     async def put_item(body: ItemBody, user: User = Depends(current_user), session: Session = Depends(db),
                        c=Depends(container)) -> dict[str, Any]:
-        if body.variant not in VARIANTS or body.lang not in LANGS:
+        if body.variant not in VARIANTS or not (body.lang in LANGS or (body.wishlist and body.lang == "any")):
             raise HTTPException(422, "Variante o lingua non valida")
-        col = owned(session, user, body.collection_id) if body.collection_id else default_collection(session, user)
+        if body.wishlist:
+            col = wishlist_of(session, user)
+        else:
+            col = owned(session, user, body.collection_id) if body.collection_id else default_collection(session, user)
         card = await c.catalog.get_card(body.catalog_lang, body.card_id)
         if card is None:
             raise HTTPException(404, "Carta non trovata")
@@ -160,6 +171,17 @@ def add_collection_routes(router: APIRouter, current_user: Callable, db: Callabl
         session.expire_all()
         return {"item": item_json(session.get(CollectionItem, item_id)),
                 "owned": owned_for(session, user, body.card_id, body.catalog_lang)}
+
+    @router.patch("/collection-items/{item_id}/target")
+    def set_target(item_id: int, body: TargetBody, user: User = Depends(current_user),
+                   session: Session = Depends(db)) -> dict[str, Any]:
+        """Lista desideri: avvisami quando il prezzo scende sotto questa cifra (None = niente avviso)."""
+        item = session.get(CollectionItem, item_id)
+        if item is None or item.collection.user_id != user.id:
+            raise HTTPException(404, "Non trovato")
+        item.target_price, item.target_notified_at = body.target_price, None
+        session.commit()
+        return {"item": item_json(item)}
 
     @router.post("/collection-items/{item_id}/confirm")
     def confirm_item(item_id: int, user: User = Depends(current_user),

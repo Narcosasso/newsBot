@@ -22,7 +22,7 @@ from cardbot.alerts.outbox import EvaluationReport, SendReport, Sender, evaluate
 from cardbot.alerts.sources import CardmarketPriceGuide, PriceData, TCGdexPrices
 from cardbot.alerts.tracking import PSA10
 from cardbot.analysis.market import CardmarketProductList, compute_set_stats, refresh_products
-from cardbot.collections.service import ROME, today, update_from_price_guide
+from cardbot.collections.service import ROME, today, update_from_price_guide, wishlist_alerts
 from cardbot.db import CollectionItem, JobState, Tracking, TrackingTarget
 
 log = logging.getLogger("cardbot.poll")
@@ -106,6 +106,7 @@ async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide,
                    dry_run: bool = False, force: bool = False, graded=None, product_list=None,
                    push=None) -> PollReport:
     collections = None
+    wishes: list[tuple[int, str]] = []
     with sessions() as session:
         data, status = await _load_data(session, guide, fallback, force)
         graded_quotes = await _load_graded(session, graded)
@@ -116,6 +117,8 @@ async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide,
                 tracked = {pid for (pid,) in session.query(TrackingTarget.id_product)
                            .filter(TrackingTarget.id_product.isnot(None)).all()}
                 collections = update_from_price_guide(session, data.entries, _data_day(data), tracked)
+                wishes = wishlist_alerts(session)
+                collections["wishlist_alerts"] = len(wishes)
                 if data.source == guide.name and product_list is not None:
                     # Dati per l'analisi: prodotti nuovi e andamento di tutte le espansioni (price guide completo).
                     collections["products_added"] = await refresh_products(session, product_list, force)
@@ -132,6 +135,12 @@ async def run_poll(sessions: sessionmaker[Session], guide: CardmarketPriceGuide,
         elif dry_run:
             return PollReport(status=f"{status} (dry-run)")
     sending = None
+    if push is not None and not dry_run:  # lista desideri: prezzo sotto l'obiettivo
+        for user_id, text in wishes:
+            try:
+                await push.send_to_user(user_id, "PokeVault · lista desideri", text, url="/#/collection", tag="desideri")
+            except Exception as exc:
+                log.warning("Avviso lista desideri non inviato: %s", exc)
     if (sender is not None or push is not None) and not dry_run:
         sending = await send_pending(sessions, sender, template, template_lang, push=push)
     return PollReport(status=status, evaluation=evaluation, sending=sending, collections=collections)

@@ -39,6 +39,10 @@ class User(Base):
     # Ultimo messaggio ricevuto: entro 24 ore si può rispondere con testo libero, dopo serve un template.
     last_inbound_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # App PokeVault: amici invitati (wa_id fittizio "app:…", niente WhatsApp), con nome e PIN propri.
+    display_name: Mapped[str | None] = mapped_column(String(60))
+    pin_hash: Mapped[str | None] = mapped_column(String(200))
+    invited_by: Mapped[int | None] = mapped_column(Integer)
 
     trackings: Mapped[list[Tracking]] = relationship(back_populates="user")
 
@@ -177,6 +181,9 @@ class Collection(Base):
     name: Mapped[str] = mapped_column(String(100))
     # "collection" (carte possedute) oppure "wishlist" (carte desiderate: non contano come possedute)
     kind: Mapped[str] = mapped_column(String(16), default="collection", server_default="collection")
+    # Cosa vedono gli amici: "friends" (visibile) o "private"; i valori in euro solo se show_values.
+    visibility: Mapped[str] = mapped_column(String(16), default="friends", server_default="friends")
+    show_values: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     items: Mapped[list[CollectionItem]] = relationship(back_populates="collection", cascade="all, delete-orphan")
@@ -296,6 +303,80 @@ class PushSubscription(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failures: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Invite(Base):
+    """Invito a PokeVault: un link usa e getta, valido 7 giorni."""
+
+    __tablename__ = "invites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Friendship(Base):
+    """Amicizia (una riga per direzione): permette di vedere le collezioni visibili e proporre scambi."""
+
+    __tablename__ = "friendships"
+    __table_args__ = (UniqueConstraint("user_id", "friend_id", name="uq_friendship"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    friend_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Trade(Base):
+    """Proposta di scambio tra due amici.
+
+    proposed -> accepted -> completed (entrambi confermano di aver ricevuto le carte; le carte si spostano da sole)
+    proposed -> rejected | cancelled | countered (sostituita da una controproposta, parent_id)
+    completed -> undone (annullato: le carte tornano dove erano)
+    """
+
+    __tablename__ = "trades"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    proposer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    recipient_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    parent_id: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), default="proposed")
+    message: Mapped[str | None] = mapped_column(String(500))
+    proposer_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    recipient_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    moves: Mapped[list | None] = mapped_column(JSON)  # spostamenti fatti al completamento (per annullare)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    items: Mapped[list[TradeItem]] = relationship(back_populates="trade", cascade="all, delete-orphan")
+
+
+class TradeItem(Base):
+    """Una carta dello scambio: da chi parte, quante copie, e prezzo al momento della proposta."""
+
+    __tablename__ = "trade_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trade_id: Mapped[int] = mapped_column(ForeignKey("trades.id"), index=True)
+    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    source_item_id: Mapped[int | None] = mapped_column(Integer)
+    card_id: Mapped[str] = mapped_column(String(64))
+    catalog_lang: Mapped[str] = mapped_column(String(8))
+    variant: Mapped[str] = mapped_column(String(16))
+    lang: Mapped[str] = mapped_column(String(8))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    name: Mapped[str] = mapped_column(String(200))
+    set_name: Mapped[str | None] = mapped_column(String(200))
+    number_label: Mapped[str | None] = mapped_column(String(32))
+    image: Mapped[str | None] = mapped_column(String(300))
+    unit_price: Mapped[float | None] = mapped_column(Float)
+
+    trade: Mapped[Trade] = relationship(back_populates="items")
 
 
 class JobState(Base):
