@@ -148,6 +148,11 @@ Cosa fa oggi (fase 1):
   numerazione) sono segnate «da verificare» e le confermi dalla scheda; quelle non trovate vengono elencate, mai
   inventate. Reimportare lo stesso file aggiorna le quantità senza creare doppioni. Le varianti con timbro (es.
   «Anniversary Stamp») non hanno un prezzo separato nelle fonti gratuite: vale quello della versione normale;
+- **Lista incollata (Pullaxy)**: stessa icona → *Incolla una lista di carte*. Accetta «Carte che mi mancano · Set»
+  o «Carte che ho · Set», una carta per riga (`#001 Exeggcute`, `#BS 4 Charizard`). Le ristampe con la sigla del set
+  originale si cercano per nome nel set collegato (es. 30th Classic Collection). Prima di salvare mostra l'anteprima;
+  poi le carte che mancano vanno nella lista desideri e le altre del set in collezione (1 copia, lingua a scelta).
+  Le carte che hai già non vengono toccate, e ripetere l'import non crea doppioni;
 - ogni notte il job salva il prezzo di tutte le carte in collezione e di quelle seguite (storico per i grafici e
   per l'analisi). Espansioni, Pokédex e scanner dal vivo arrivano nelle prossime fasi;
 - **Espansioni**: tutti i set divisi per serie (internazionali, giapponesi, cinesi), dalla più recente; per ogni set

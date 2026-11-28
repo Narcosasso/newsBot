@@ -1,0 +1,127 @@
+Carte che mi mancano · 30th Celebration
+122 carte
+
+#001 Exeggcute
+#002 Alolan Exeggutor
+#003 Volbeat
+#007 Cherrim
+#009 Vulpix
+#010 Ninetales
+#014 Reshiram
+#015 Fuecoco ex
+#016 Slowpoke
+#017 Lapras
+#019 Kyogre
+#020 Palkia
+#025 Pikachu
+#027 Pikachu
+#032 Pikachu
+#034 Pikachu
+#036 Pikachu
+#039 Pikachu
+#040 Pikachu
+#042 Pikachu
+#044 Pikachu
+#046 Pikachu
+#049 Pikachu
+#050 Pikachu
+#053 Pikachu ex
+#054 Pikachu ex
+#055 Zapdos
+#058 Toxel
+#059 Toxtricity
+#061 Morpeko
+#062 Miraidon
+#063s Mewtwo
+#064 Mewtwo ex
+#065 Mew
+#066 Mew ex
+#067 Marill
+#071 Sylveon ex
+#073 Drifloon
+#075 Chandelure
+#076 Xerneas
+#081 Gimmighoul
+#085 Lycanroc
+#086 Koraidon
+#087 Nidoran
+#088 Nidorina
+#089 Alolan Meowth
+#090 Gengar ex
+#091 Umbreon
+#092 Umbreon ex
+#094 Scraggy
+#097 Deino
+#098 Zweilous
+#099 Hydreigon
+#104 Ferrothorn
+#107 Zamazenta
+#108 Gholdengo
+#110 Jangmo-o
+#113 Meowth
+#114 Kangaskhan
+#117 Eevee
+#120 Igglybuff
+#121 Lugia
+#123 Hisuian Zoroark
+#125 Maushold
+#126 Poké Pad
+#127 Switch
+#129 Alolan Exeggutor
+#132 Articuno
+#134 Toxtricity
+#135 Morpeko
+#136 Drifloon
+#137 Chandelure
+#138 Lycanroc
+#139 Alolan Meowth
+#140 Scraggy
+#141 Galarian Meowth
+#142 Gholdengo
+#144 Meowth
+#146 Maushold
+#147 Fuecoco ex
+#148 Greninja ex
+#149 Pikachu ex
+#150 Pikachu ex
+#151 Mewtwo ex
+#152 Mew ex
+#153 Sylveon ex
+#155 Jirachi ex
+#156 Salamence ex
+#157 Mewtwo ex
+#158 Mew ex
+#BS 58 Pikachu
+#BS 4 Charizard
+#GH 18 Misty
+#GC 69 Erika's Jigglypuff
+#NG 25 Sneasel
+#NDE 106 Shining Celebi
+#AQ 149 Lugia
+#RS 5 Delcatty
+#TRR 19 Dark Tyranitar
+#UF 108 Scizor ex
+#DS 11 Metagross δ Delta Species
+#LA 43 Uxie Lv.55
+#PL 47 Crobat [G] Lv.44
+#TM 94 Gengar
+#TM 100 Darkrai & Cresselia LEGEND
+#NVI 101 N
+#DRX 85 Rayquaza EX
+#011 Genesect EX
+#PRC 106 MGardevoir EX
+#BKP 41 Greninja BREAK
+#SUM 89 Solgaleo GX
+#CIN 57 Buzzwole GX
+#TEU 33 Pikachu & Zekrom GX
+#SSH 138 Zacian V
+#VIV 50 Raikou
+#FST 114 Mew VMAX
+#BRS 123 Arceus VSTAR
+#PAL 203 Magikarp
+# Basic Grass Energy
+#R Mew
+#G Mew
+#B Mew
+
+Lista creata con Pullaxy · https://pullaxy.com/download

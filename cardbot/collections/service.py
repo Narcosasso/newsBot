@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session, sessionmaker
 
 from cardbot.catalog.base import Catalog
+from cardbot.collections.checklist import ChecklistPlan
 from cardbot.collections.importer import ImportPlan
 from cardbot.db import Collection, CollectionItem, CollectionValue, PriceHistory, User, utcnow
 from cardbot.prices.models import CM_FIELDS, cardmarket_quote, parse_datetime
@@ -293,3 +294,66 @@ def wishlist_alerts(session: Session) -> list[tuple[int, str]]:
         elif i.target_notified_at is not None and i.unit_price > i.target_price * 1.05:
             i.target_notified_at = None  # risalita: il prossimo calo verrà segnalato di nuovo
     return out
+
+
+# --- liste incollate (es. "Carte che mi mancano" di Pullaxy) ------------------------------------------------
+
+@dataclass
+class ChecklistReport:
+    collection_id: int
+    collection_name: str
+    wished: int = 0            # carte messe nella lista desideri
+    owned: int = 0             # carte segnate come possedute
+    skipped: int = 0           # già nella collezione: non toccate
+    item_ids: list[int] = field(default_factory=list)
+
+
+def owned_card_ids(session: Session, user: User, catalog_lang: str = "en") -> set[str]:
+    rows = (session.query(CollectionItem.card_id).join(Collection)
+            .filter(Collection.user_id == user.id, Collection.kind != "wishlist",
+                    CollectionItem.catalog_lang == catalog_lang).all())
+    return {r[0] for r in rows}
+
+
+def apply_checklist(session: Session, user: User, plan: ChecklistPlan, collection: Collection, *, wish: bool,
+                    own: bool, lang: str) -> ChecklistReport:
+    """Lista "mi mancano": le carte in lista vanno nei desideri, le altre del set in collezione (1 copia).
+    Lista "ho": il contrario. Le carte che hai già non si toccano; quelle segnate come tue escono dai desideri."""
+    from cardbot.accounts import wishlist_of  # evita un import circolare
+
+    listed = [(m.card, m.set_id, m.set_name, m.by_name) for m in plan.matched]
+    rest = [(c, s["id"], s.get("name", s["id"]), False) for c, s in plan.rest]
+    to_wish, to_own = (listed, rest) if plan.checklist.kind == "missing" else (rest, listed)
+    report = ChecklistReport(collection_id=collection.id, collection_name=collection.name)
+    have = owned_card_ids(session, user)
+    wishlist = wishlist_of(session, user)
+    if own:
+        for card, set_id, set_name, review in to_own:
+            if card["id"] in have:
+                report.skipped += 1
+                continue
+            item = upsert_item(session, collection, card_id=card["id"], catalog_lang="en", variant="normal",
+                               lang=lang, quantity=1, name=card.get("name", ""), set_id=set_id, set_name=set_name,
+                               needs_review=review, source="import")
+            have.add(card["id"])
+            report.owned += 1
+            report.item_ids.append(item.id)
+            (session.query(CollectionItem).filter_by(collection_id=wishlist.id, catalog_lang="en",
+                                                      card_id=card["id"]).delete())
+    if wish:
+        for card, set_id, set_name, review in to_wish:
+            if card["id"] in have:
+                report.skipped += 1
+                continue
+            exists = (session.query(CollectionItem)
+                      .filter_by(collection_id=wishlist.id, catalog_lang="en", card_id=card["id"]).first())
+            if exists is None:
+                exists = upsert_item(session, wishlist, card_id=card["id"], catalog_lang="en", variant="normal",
+                                     lang="any", quantity=1, name=card.get("name", ""), set_id=set_id,
+                                     set_name=set_name, needs_review=review, source="import")
+            report.wished += 1
+            report.item_ids.append(exists.id)
+    session.flush()
+    record_value(session, collection.id)
+    session.commit()
+    return report

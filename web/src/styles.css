@@ -440,3 +440,4 @@ h3.sub { margin: 6px 0 0; font-size: 15px; }
 .quote { font-style: italic; color: var(--text); padding: 8px 12px; border-left: 3px solid var(--gold); background: var(--surface-2); border-radius: 0 10px 10px 0; }
 .privacy-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 button.owned-row { width: 100%; text-align: left; }
+.input.list-area { min-height: 180px; font-size: 15px; }

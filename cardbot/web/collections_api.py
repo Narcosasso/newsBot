@@ -10,9 +10,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from cardbot import images
+from cardbot.collections.checklist import ChecklistError, ChecklistImporter, ChecklistPlan, parse_checklist
 from cardbot.collections.importer import CollectionImporter, ImportFormatError, parse_export
 from cardbot.collections.service import (
-    apply_plan, collection_totals, get_or_create_collection, record_value, refresh_items, upsert_item,
+    apply_checklist, apply_plan, owned_card_ids, collection_totals, get_or_create_collection, record_value, refresh_items, upsert_item,
 )
 from cardbot.accounts import wishlist_of
 from cardbot.db import Collection, CollectionItem, CollectionValue, User
@@ -34,6 +35,14 @@ class ItemBody(BaseModel):
     lang: str = Field(max_length=8)
     quantity: int = Field(ge=0, le=999)
     wishlist: bool = False   # True: nella lista desideri (lang "any" = qualsiasi lingua)
+
+
+class ChecklistBody(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000)
+    wish: bool = True            # carte che mancano -> lista desideri
+    own: bool = True             # carte che hai -> collezione
+    lang: str = Field(default="it", max_length=8)
+    collection_id: int | None = None
 
 
 class TargetBody(BaseModel):
@@ -138,6 +147,47 @@ def add_collection_routes(router: APIRouter, current_user: Callable, db: Callabl
         return {"collection_id": report.collection_id, "collection_name": report.collection_name,
                 "imported": report.imported, "cards": report.cards, "review": report.review,
                 "unmatched": report.unmatched}
+
+    async def checklist_plan(text: str, c: Any) -> ChecklistPlan:
+        try:
+            return await ChecklistImporter(c.catalog).plan(parse_checklist(text))
+        except ChecklistError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @router.post("/collections/checklist/preview")
+    async def checklist_preview(body: ChecklistBody, user: User = Depends(current_user),
+                                session: Session = Depends(db), c=Depends(container)) -> dict[str, Any]:
+        """Cosa farebbe l'import della lista, senza salvare nulla."""
+        plan = await checklist_plan(body.text, c)
+        have = owned_card_ids(session, user)
+        listed = [m.card["id"] for m in plan.matched]
+        rest = [card["id"] for card, _ in plan.rest]
+        langs = [i.lang for col in session.query(Collection).filter_by(user_id=user.id, kind="collection")
+                 for i in col.items]
+        return {
+            "kind": plan.checklist.kind, "set_name": plan.sets[0].get("name"),
+            "sets": [{"id": s["id"], "name": s.get("name")} for s in plan.sets],
+            "listed": len(listed), "listed_have": sum(1 for i in listed if i in have),
+            "rest": len(rest), "rest_have": sum(1 for i in rest if i in have),
+            "review": [{"line": m.row.line, "card_id": m.card["id"], "name": m.card.get("name"),
+                        "set_name": m.set_name} for m in plan.matched if m.by_name],
+            "unmatched": [{"line": r.line, "reason": why} for r, why in plan.unmatched],
+            "lang": max(set(langs), key=langs.count) if langs else "it",
+        }
+
+    @router.post("/collections/checklist")
+    async def checklist_import(body: ChecklistBody, tasks: BackgroundTasks, user: User = Depends(current_user),
+                               session: Session = Depends(db), c=Depends(container)) -> dict[str, Any]:
+        if body.lang not in LANGS:
+            raise HTTPException(422, "Lingua non valida")
+        plan = await checklist_plan(body.text, c)
+        col = owned(session, user, body.collection_id) if body.collection_id else default_collection(session, user)
+        if col.kind == "wishlist":
+            raise HTTPException(422, "Scegli una collezione, non la lista desideri")
+        report = apply_checklist(session, user, plan, col, wish=body.wish, own=body.own, lang=body.lang)
+        tasks.add_task(refresh_items, c.sessions, c.catalog, report.item_ids)
+        return {"collection_id": report.collection_id, "collection_name": report.collection_name,
+                "wished": report.wished, "owned": report.owned, "skipped": report.skipped}
 
     @router.put("/collection-items")
     async def put_item(body: ItemBody, user: User = Depends(current_user), session: Session = Depends(db),

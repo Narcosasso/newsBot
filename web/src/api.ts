@@ -145,6 +145,21 @@ export type ImportReport = {
   unmatched: { name: string; set: string; number: string; quantity: number; reason: string }[];
 };
 
+export type ChecklistPreview = {
+  kind: "missing" | "owned";
+  set_name: string;
+  sets: { id: string; name: string }[];
+  listed: number;
+  listed_have: number;
+  rest: number;
+  rest_have: number;
+  review: { line: string; card_id: string; name: string; set_name: string }[];
+  unmatched: { line: string; reason: string }[];
+  lang: string;
+};
+
+export type ChecklistResult = { collection_id: number; collection_name: string; wished: number; owned: number; skipped: number };
+
 export type Graded = {
   available: boolean;
   reason?: string;
@@ -306,6 +321,10 @@ export const api = {
     req<ImportReport>("/api/collections/import", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: fileText,
     }),
+  checklistPreview: (text: string) =>
+    req<ChecklistPreview>("/api/collections/checklist/preview", { method: "POST", ...json({ text }) }),
+  checklistImport: (body: { text: string; wish: boolean; own: boolean; lang: string; collection_id?: number }) =>
+    req<ChecklistResult>("/api/collections/checklist", { method: "POST", ...json(body) }),
   setItem: (body: { collection_id?: number; card_id: string; catalog_lang: string; variant: string; lang: string;
     quantity: number; wishlist?: boolean }) =>
     req<{ item: CollectionItem | null; owned: OwnedItem[] }>("/api/collection-items", { method: "PUT", ...json(body) }),

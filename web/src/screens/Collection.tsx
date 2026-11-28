@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { api, type CollectionDetail, type CollectionItem, type CollectionSummary, type ImportReport } from "../api";
+import { api, type ChecklistResult, type CollectionDetail, type CollectionItem, type CollectionSummary, type ImportReport } from "../api";
 import { CATALOG_BADGE, date, LANG_CHIPS, pct, plural, price, trendClass } from "../format";
 import { openCard } from "../nav";
 import { CardImage, Header, Icon, SortBar, type SortOption, Spinner, sortBy } from "../ui";
+import { ChecklistImport, ImportChooser } from "./ImportList";
 import { SettingsSheet } from "./Settings";
 import { TrackedList } from "./Tracked";
 import { PriceChart } from "../chart";
@@ -30,6 +31,9 @@ export function CollectionScreen() {
   const [report, setReport] = useState<ImportReport | null>(null);
   const [importing, setImporting] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [chooser, setChooser] = useState(false);
+  const [pasting, setPasting] = useState(false);
+  const [listResult, setListResult] = useState<ChecklistResult | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const loadList = () =>
@@ -66,7 +70,7 @@ export function CollectionScreen() {
   return (
     <>
       <Header title="Collezione" right={<>
-        <button class="round" onClick={() => fileInput.current?.click()} aria-label="Importa da file"><Icon name="upload" /></button>
+        <button class="round" onClick={() => setChooser(true)} aria-label="Importa"><Icon name="upload" /></button>
         <button class="round" onClick={() => setSettings(true)} aria-label="Impostazioni"><Icon name="gear" /></button>
       </>} />
       <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={onFile} />
@@ -79,8 +83,8 @@ export function CollectionScreen() {
         <div class="empty">
           <Icon name="folder" size={40} />
           <h2>La tua collezione è vuota</h2>
-          <p class="muted">Importa il file esportato da MyDex, oppure apri una carta e tocca <b>Aggiungi alla collezione</b>.</p>
-          <button class="btn primary" onClick={() => fileInput.current?.click()}><Icon name="upload" size={18} /> Importa da file</button>
+          <p class="muted">Importa il file di MyDex o incolla una lista di Pullaxy, oppure apri una carta e tocca <b>Aggiungi alla collezione</b>.</p>
+          <button class="btn primary" onClick={() => setChooser(true)}><Icon name="upload" size={18} /> Importa</button>
         </div>
       )}
 
@@ -102,6 +106,23 @@ export function CollectionScreen() {
       )}
 
       {report && <ImportResult report={report} onClose={() => setReport(null)} />}
+      {chooser && <ImportChooser onClose={() => setChooser(false)}
+        onFile={() => { setChooser(false); fileInput.current?.click(); }}
+        onList={() => { setChooser(false); setPasting(true); }} />}
+      {pasting && <ChecklistImport collections={list ?? []} onClose={() => setPasting(false)}
+        onDone={async (r) => { setPasting(false); setListResult(r); setSelected(r.collection_id); await loadList(); }} />}
+      {listResult && (
+        <div class="modal" onClick={() => setListResult(null)}>
+          <div class="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Lista importata</h2>
+            {listResult.owned > 0 && <p>✓ {plural(listResult.owned, "carta segnata", "carte segnate")} come tue in <b>{listResult.collection_name}</b>.</p>}
+            {listResult.wished > 0 && <p>❤ {plural(listResult.wished, "carta", "carte")} nella lista desideri.</p>}
+            {listResult.skipped > 0 && <p class="muted small">{plural(listResult.skipped, "carta era", "carte erano")} già in collezione: non le ho toccate.</p>}
+            <p class="muted small">Foto e prezzi arrivano in qualche secondo.</p>
+            <button class="btn primary" onClick={() => setListResult(null)}>Ok</button>
+          </div>
+        </div>
+      )}
       {settings && <SettingsSheet onClose={() => setSettings(false)} />}
     </>
   );
